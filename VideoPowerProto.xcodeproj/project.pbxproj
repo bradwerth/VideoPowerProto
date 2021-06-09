@@ -11,17 +11,27 @@
 		A258AE8926702F0400DA4405 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A258AE8826702F0400DA4405 /* Assets.xcassets */; };
 		A258AE8C26702F0400DA4405 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = A258AE8A26702F0400DA4405 /* MainMenu.xib */; };
 		A258AE8F26702F0400DA4405 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A258AE8E26702F0400DA4405 /* main.m */; };
+		A268CC7C26728D18006A180E /* MainViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A268CC7B26728D18006A180E /* MainViewController.m */; };
+		A268CC7F2672AFBF006A180E /* VideoHolder.m in Sources */ = {isa = PBXBuildFile; fileRef = A268CC7E2672AFBF006A180E /* VideoHolder.m */; };
+		A268CC822672C9B0006A180E /* VideoModel.m in Sources */ = {isa = PBXBuildFile; fileRef = A268CC812672C9B0006A180E /* VideoModel.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		A258AE8226702F0200DA4405 /* video-low-power.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "video-low-power.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A2035C482677C72100683251 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		A258AE8226702F0200DA4405 /* VideoPowerProto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VideoPowerProto.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A258AE8526702F0200DA4405 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		A258AE8626702F0200DA4405 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		A258AE8826702F0400DA4405 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		A258AE8B26702F0400DA4405 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.xib; name = Base; path = Base.lproj/MainMenu.xib; sourceTree = "<group>"; };
 		A258AE8D26702F0400DA4405 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		A258AE8E26702F0400DA4405 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		A258AE9026702F0400DA4405 /* video_low_power.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = video_low_power.entitlements; sourceTree = "<group>"; };
+		A258AE9026702F0400DA4405 /* VideoPowerProto.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = VideoPowerProto.entitlements; sourceTree = "<group>"; };
+		A268CC7A26728D18006A180E /* MainViewController.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MainViewController.h; sourceTree = "<group>"; };
+		A268CC7B26728D18006A180E /* MainViewController.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = MainViewController.m; sourceTree = "<group>"; };
+		A268CC7D2672AFBF006A180E /* VideoHolder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VideoHolder.h; sourceTree = "<group>"; };
+		A268CC7E2672AFBF006A180E /* VideoHolder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VideoHolder.m; sourceTree = "<group>"; };
+		A268CC802672C9B0006A180E /* VideoModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VideoModel.h; sourceTree = "<group>"; };
+		A268CC812672C9B0006A180E /* VideoModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VideoModel.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -38,7 +48,8 @@
 		A258AE7926702F0200DA4405 = {
 			isa = PBXGroup;
 			children = (
-				A258AE8426702F0200DA4405 /* video-low-power */,
+				A2035C482677C72100683251 /* README.md */,
+				A258AE8426702F0200DA4405 /* VideoPowerProto */,
 				A258AE8326702F0200DA4405 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -46,31 +57,37 @@
 		A258AE8326702F0200DA4405 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A258AE8226702F0200DA4405 /* video-low-power.app */,
+				A258AE8226702F0200DA4405 /* VideoPowerProto.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
 		};
-		A258AE8426702F0200DA4405 /* video-low-power */ = {
+		A258AE8426702F0200DA4405 /* VideoPowerProto */ = {
 			isa = PBXGroup;
 			children = (
 				A258AE8526702F0200DA4405 /* AppDelegate.h */,
 				A258AE8626702F0200DA4405 /* AppDelegate.m */,
 				A258AE8826702F0400DA4405 /* Assets.xcassets */,
-				A258AE8A26702F0400DA4405 /* MainMenu.xib */,
 				A258AE8D26702F0400DA4405 /* Info.plist */,
+				A258AE8A26702F0400DA4405 /* MainMenu.xib */,
+				A268CC7A26728D18006A180E /* MainViewController.h */,
+				A268CC7B26728D18006A180E /* MainViewController.m */,
 				A258AE8E26702F0400DA4405 /* main.m */,
-				A258AE9026702F0400DA4405 /* video_low_power.entitlements */,
+				A258AE9026702F0400DA4405 /* VideoPowerProto.entitlements */,
+				A268CC7D2672AFBF006A180E /* VideoHolder.h */,
+				A268CC7E2672AFBF006A180E /* VideoHolder.m */,
+				A268CC802672C9B0006A180E /* VideoModel.h */,
+				A268CC812672C9B0006A180E /* VideoModel.m */,
 			);
-			path = "video-low-power";
+			path = VideoPowerProto;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		A258AE8126702F0200DA4405 /* video-low-power */ = {
+		A258AE8126702F0200DA4405 /* VideoPowerProto */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = A258AE9326702F0400DA4405 /* Build configuration list for PBXNativeTarget "video-low-power" */;
+			buildConfigurationList = A258AE9326702F0400DA4405 /* Build configuration list for PBXNativeTarget "VideoPowerProto" */;
 			buildPhases = (
 				A258AE7E26702F0200DA4405 /* Sources */,
 				A258AE7F26702F0200DA4405 /* Frameworks */,
@@ -80,9 +97,9 @@
 			);
 			dependencies = (
 			);
-			name = "video-low-power";
-			productName = "video-low-power";
-			productReference = A258AE8226702F0200DA4405 /* video-low-power.app */;
+			name = VideoPowerProto;
+			productName = VideoPowerProto;
+			productReference = A258AE8226702F0200DA4405 /* VideoPowerProto.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -98,7 +115,7 @@
 					};
 				};
 			};
-			buildConfigurationList = A258AE7D26702F0200DA4405 /* Build configuration list for PBXProject "video-low-power" */;
+			buildConfigurationList = A258AE7D26702F0200DA4405 /* Build configuration list for PBXProject "VideoPowerProto" */;
 			compatibilityVersion = "Xcode 9.3";
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
@@ -111,7 +128,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				A258AE8126702F0200DA4405 /* video-low-power */,
+				A258AE8126702F0200DA4405 /* VideoPowerProto */,
 			);
 		};
 /* End PBXProject section */
@@ -134,6 +151,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				A258AE8F26702F0400DA4405 /* main.m in Sources */,
+				A268CC7F2672AFBF006A180E /* VideoHolder.m in Sources */,
+				A268CC822672C9B0006A180E /* VideoModel.m in Sources */,
+				A268CC7C26728D18006A180E /* MainViewController.m in Sources */,
 				A258AE8726702F0200DA4405 /* AppDelegate.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -268,15 +288,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "video-low-power/video_low_power.entitlements";
+				CODE_SIGN_ENTITLEMENTS = VideoPowerProto/VideoPowerProto.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				INFOPLIST_FILE = "video-low-power/Info.plist";
+				INFOPLIST_FILE = VideoPowerProto/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.bradleyjwerth.video-low-power";
+				PRODUCT_BUNDLE_IDENTIFIER = com.bradleyjwerth.VideoPowerProto;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -286,15 +306,15 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
-				CODE_SIGN_ENTITLEMENTS = "video-low-power/video_low_power.entitlements";
+				CODE_SIGN_ENTITLEMENTS = VideoPowerProto/VideoPowerProto.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				INFOPLIST_FILE = "video-low-power/Info.plist";
+				INFOPLIST_FILE = VideoPowerProto/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				PRODUCT_BUNDLE_IDENTIFIER = "com.bradleyjwerth.video-low-power";
+				PRODUCT_BUNDLE_IDENTIFIER = com.bradleyjwerth.VideoPowerProto;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -302,7 +322,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		A258AE7D26702F0200DA4405 /* Build configuration list for PBXProject "video-low-power" */ = {
+		A258AE7D26702F0200DA4405 /* Build configuration list for PBXProject "VideoPowerProto" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A258AE9126702F0400DA4405 /* Debug */,
@@ -311,7 +331,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		A258AE9326702F0400DA4405 /* Build configuration list for PBXNativeTarget "video-low-power" */ = {
+		A258AE9326702F0400DA4405 /* Build configuration list for PBXNativeTarget "VideoPowerProto" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				A258AE9426702F0400DA4405 /* Debug */,
