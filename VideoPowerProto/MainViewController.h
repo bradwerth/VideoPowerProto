@@ -15,6 +15,8 @@ NS_ASSUME_NONNULL_BEGIN
 - (IBAction)selectBuffering:(id)sender;
 - (IBAction)clickPixelBufferButton:(id)sender;
 
+- (void)handleDecodedFrame:(CMSampleBufferRef)buffer;
+
 @end
 
 NS_ASSUME_NONNULL_END

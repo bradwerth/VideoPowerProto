@@ -14,6 +14,8 @@
 		A268CC7C26728D18006A180E /* MainViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A268CC7B26728D18006A180E /* MainViewController.m */; };
 		A268CC7F2672AFBF006A180E /* VideoHolder.m in Sources */ = {isa = PBXBuildFile; fileRef = A268CC7E2672AFBF006A180E /* VideoHolder.m */; };
 		A268CC822672C9B0006A180E /* VideoModel.m in Sources */ = {isa = PBXBuildFile; fileRef = A268CC812672C9B0006A180E /* VideoModel.m */; };
+		A2EACA30267BD792006FD153 /* Media in Resources */ = {isa = PBXBuildFile; fileRef = A2EACA2F267BD792006FD153 /* Media */; };
+		A2F26BCB26796A7500F4939F /* VideoDecoder.m in Sources */ = {isa = PBXBuildFile; fileRef = A2F26BCA26796A7500F4939F /* VideoDecoder.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -32,6 +34,10 @@
 		A268CC7E2672AFBF006A180E /* VideoHolder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VideoHolder.m; sourceTree = "<group>"; };
 		A268CC802672C9B0006A180E /* VideoModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VideoModel.h; sourceTree = "<group>"; };
 		A268CC812672C9B0006A180E /* VideoModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VideoModel.m; sourceTree = "<group>"; };
+		A2EACA2F267BD792006FD153 /* Media */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Media; sourceTree = "<group>"; };
+		A2F26BC72677EF3800F4939F /* HDRMovie.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = HDRMovie.mov; sourceTree = "<group>"; };
+		A2F26BC926796A7500F4939F /* VideoDecoder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VideoDecoder.h; sourceTree = "<group>"; };
+		A2F26BCA26796A7500F4939F /* VideoDecoder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VideoDecoder.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -48,8 +54,10 @@
 		A258AE7926702F0200DA4405 = {
 			isa = PBXGroup;
 			children = (
+				A2EACA2F267BD792006FD153 /* Media */,
 				A2035C482677C72100683251 /* README.md */,
 				A258AE8426702F0200DA4405 /* VideoPowerProto */,
+				A2F26BC62677EECE00F4939F /* Media */,
 				A258AE8326702F0200DA4405 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -74,12 +82,22 @@
 				A268CC7B26728D18006A180E /* MainViewController.m */,
 				A258AE8E26702F0400DA4405 /* main.m */,
 				A258AE9026702F0400DA4405 /* VideoPowerProto.entitlements */,
+				A2F26BC926796A7500F4939F /* VideoDecoder.h */,
+				A2F26BCA26796A7500F4939F /* VideoDecoder.m */,
 				A268CC7D2672AFBF006A180E /* VideoHolder.h */,
 				A268CC7E2672AFBF006A180E /* VideoHolder.m */,
 				A268CC802672C9B0006A180E /* VideoModel.h */,
 				A268CC812672C9B0006A180E /* VideoModel.m */,
 			);
 			path = VideoPowerProto;
+			sourceTree = "<group>";
+		};
+		A2F26BC62677EECE00F4939F /* Media */ = {
+			isa = PBXGroup;
+			children = (
+				A2F26BC72677EF3800F4939F /* HDRMovie.mov */,
+			);
+			path = Media;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -138,6 +156,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A2EACA30267BD792006FD153 /* Media in Resources */,
 				A258AE8926702F0400DA4405 /* Assets.xcassets in Resources */,
 				A258AE8C26702F0400DA4405 /* MainMenu.xib in Resources */,
 			);
@@ -152,6 +171,7 @@
 			files = (
 				A258AE8F26702F0400DA4405 /* main.m in Sources */,
 				A268CC7F2672AFBF006A180E /* VideoHolder.m in Sources */,
+				A2F26BCB26796A7500F4939F /* VideoDecoder.m in Sources */,
 				A268CC822672C9B0006A180E /* VideoModel.m in Sources */,
 				A268CC7C26728D18006A180E /* MainViewController.m in Sources */,
 				A258AE8726702F0200DA4405 /* AppDelegate.m in Sources */,
@@ -288,6 +308,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_ARC = NO;
 				CODE_SIGN_ENTITLEMENTS = VideoPowerProto/VideoPowerProto.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
@@ -306,6 +327,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CLANG_ENABLE_OBJC_ARC = NO;
 				CODE_SIGN_ENTITLEMENTS = VideoPowerProto/VideoPowerProto.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;

@@ -13,6 +13,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface VideoHolder : NSView
 - (void)resetWithModel:(VideoModel*)model;
+- (void)handleDecodedFrame:(CMSampleBufferRef)buffer;
 @end
 
 NS_ASSUME_NONNULL_END

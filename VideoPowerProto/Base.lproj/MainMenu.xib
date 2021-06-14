@@ -539,17 +539,15 @@
                         <rect key="frame" x="484" y="20" width="267" height="192"/>
                         <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                         <subviews>
-                            <customView ambiguous="YES" verifyAmbiguity="off" translatesAutoresizingMaskIntoConstraints="NO" id="qM8-eV-Fi9" customClass="VideoHolder">
-                                <rect key="frame" x="52" y="48" width="163" height="96"/>
-                                <constraints>
-                                    <constraint firstAttribute="width" secondItem="qM8-eV-Fi9" secondAttribute="height" multiplier="16:9" id="Gh8-ve-Q9x"/>
-                                </constraints>
+                            <customView fixedFrame="YES" verifyAmbiguity="off" translatesAutoresizingMaskIntoConstraints="NO" id="qM8-eV-Fi9" customClass="VideoHolder">
+                                <rect key="frame" x="20" y="20" width="227" height="152"/>
+                                <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                             </customView>
                         </subviews>
                     </customView>
                 </subviews>
             </view>
-            <point key="canvasLocation" x="496" y="265"/>
+            <point key="canvasLocation" x="495.5" y="265"/>
         </window>
         <viewController id="Srn-Ee-aWU" customClass="MainViewController">
             <connections>

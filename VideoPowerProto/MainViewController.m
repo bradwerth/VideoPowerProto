@@ -5,7 +5,10 @@
 //  Created by Brad Werth on 6/10/21.
 //
 
+#import <AVFoundation/AVFoundation.h>
+
 #import "MainViewController.h"
+#import "VideoDecoder.h"
 #import "VideoHolder.h"
 #import "VideoModel.h"
 
@@ -24,13 +27,21 @@
 
 @implementation MainViewController
 
+VideoDecoder* videoDecoder;
+
 - (void)viewDidLoad {
   [super viewDidLoad];
+
+  videoDecoder = [[VideoDecoder alloc] initWithController:self];
 
   // Listen to all the properties that might change in our model.
   [self.videoModel addObserver:self forKeyPath:@"layerClass" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"buffering" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"pixelBuffer" options:0 context:nil];
+
+  // Setup our initial videoHolder and videoDecoder.
+  [self resetVideoHolder];
+  [self resetVideoDecoder];
 }
 
 - (IBAction)selectLayerClass:(NSPopUpButton*)sender {
@@ -47,10 +58,23 @@
   self.videoModel.pixelBuffer = (isOn ? (oldValue |= sender.tag) : (oldValue &= ~sender.tag));
 }
 
--(void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context {
-  // All changes to the model require a resetting videoHolder.
+- (void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context {
+  // All changes to the model require resetting the videoHolder and videoDecoder,
+  // in that order.
+  [self resetVideoHolder];
+  [self resetVideoDecoder];
+}
+
+- (void)resetVideoDecoder {
+  [videoDecoder resetWithModel:self.videoModel];
+}
+
+- (void)resetVideoHolder {
   [self.videoHolder resetWithModel:self.videoModel];
 }
 
+- (void)handleDecodedFrame:(CMSampleBufferRef)buffer {
+  [self.videoHolder handleDecodedFrame:buffer];
+}
 
 @end
