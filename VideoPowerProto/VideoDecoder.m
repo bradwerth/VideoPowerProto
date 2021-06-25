@@ -58,10 +58,8 @@ dispatch_queue_global_t queueToUse;
 
   NSError* error = nil;
 
-  // For now, hardcode the HDRMovie.mov asset.
-  NSBundle* bundle = [NSBundle mainBundle];
-  NSURL* url = [bundle URLForResource:@"HDRMovie" withExtension:@"mov" subdirectory:@"Media"];
-  asset = [[AVAsset assetWithURL:url] retain];
+  asset = [[model videoAsset] retain];
+
   assetReader = [[AVAssetReader alloc] initWithAsset:asset error:&error];
   if (assetReader == nil) {
     NSLog(@"AssetReader creation failed with error: %@.", error);

@@ -38,6 +38,7 @@ VideoDecoder* videoDecoder;
   [self.videoModel addObserver:self forKeyPath:@"layerClass" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"buffering" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"pixelBuffer" options:0 context:nil];
+  [self.videoModel addObserver:self forKeyPath:@"videoFilename" options:0 context:nil];
 
   // Setup our initial videoHolder and videoDecoder.
   [self resetVideoHolder];

@@ -5,6 +5,7 @@
 //  Created by Brad Werth on 6/10/21.
 //
 
+#import <AVKit/AVKit.h>
 #import <Foundation/Foundation.h>
 
 NS_ASSUME_NONNULL_BEGIN
@@ -32,6 +33,17 @@ typedef NS_OPTIONS(NSInteger, PixelBuffer) {
 @property LayerClass layerClass;
 @property Buffering buffering;
 @property PixelBuffer pixelBuffer;
+
+// For now, we're going to hardcode this property so we make a custom getter.
+// We set it as readonly so we don't forget and try to overwrite while we still
+// have the custom getter.
+@property (nonatomic, readonly) NSString* videoFilename;
+
+// Provide a convenience property for turning the videoFilename into an
+// AVAsset.
+@property (nonatomic, readonly) AVAsset* videoAsset;
+
+- (void) waitForVideoAssetFirstTrack: (void (^)(AVAssetTrack*))handler;
 
 @end
 

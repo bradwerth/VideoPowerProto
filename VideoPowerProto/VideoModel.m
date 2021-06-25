@@ -9,4 +9,46 @@
 
 @implementation VideoModel
 // Everything of interest is managed by our properties.
+
+- (NSString*) videoFilename {
+  return @"HDRMovie.mov";
+}
+
+- (AVAsset*) videoAsset {
+  NSString* resource = [[self videoFilename] stringByDeletingPathExtension];
+  NSString* extension = [[self videoFilename] pathExtension];
+  NSBundle* bundle = [NSBundle mainBundle];
+  NSURL* url = [bundle URLForResource:resource withExtension:extension subdirectory:@"Media"];
+  return [AVAsset assetWithURL:url];
+}
+
+- (void) waitForVideoAssetFirstTrack: (void (^)(AVAssetTrack*))handler {
+  AVAsset* asset = [self videoAsset];
+  if (!asset) {
+    // No tracks, so call the handler immediately.
+    handler(nil);
+    return;
+  }
+
+  [asset loadValuesAsynchronouslyForKeys:@[@"tracks"] completionHandler:^{
+    NSError* error = nil;
+    AVKeyValueStatus status = [asset statusOfValueForKey:@"tracks" error:&error];
+    if (status == AVKeyValueStatusFailed) {
+      NSLog(@"Track loading failed with: %@.", error);
+      handler(nil);
+      return;
+    }
+
+    // Track property is loaded, so we can get the video tracks without blocking.
+    AVAssetTrack* firstTrack = [[asset tracksWithMediaType:AVMediaTypeVideo] firstObject];
+    if (!firstTrack) {
+      NSLog(@"No video track.");
+      handler(nil);
+      return;
+    }
+
+    // Call the handler with the first track.
+    handler(firstTrack);
+  }];
+}
 @end

@@ -15,6 +15,7 @@
 // Retained reference to the layer that actually displays the video content.
 CALayer* contentLayer;
 VideoModel* lastModel;
+float aspectRatio;
 
 - (void)awakeFromNib {
   // Treat this as our initialization method, and set properties we'll need to
@@ -29,11 +30,21 @@ VideoModel* lastModel;
     [self makeBackingLayer];
   }
   assert(self.layer);
+
   self.layer.position = NSZeroPoint;
-  self.layer.bounds = self.bounds;
   self.layer.anchorPoint = NSZeroPoint;
   self.layer.contentsGravity = kCAGravityTopLeft;
+  self.layer.contentsScale = 1;
+  self.layer.bounds = NSZeroRect;
   self.layer.edgeAntialiasingMask = 0;
+  self.layer.opaque = YES;
+
+  // Listen to changes in our frame bounds so we can re-center our layer.
+  self.postsBoundsChangedNotifications = YES;
+  VideoHolder* holder = self;
+  [[NSNotificationCenter defaultCenter] addObserverForName:NSViewFrameDidChangeNotification object:self queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification* note) {
+    [holder centerContentLayer];
+  }];
 }
 
 - (void)handleDecodedFrame:(CMSampleBufferRef)buffer {
@@ -77,13 +88,49 @@ VideoModel* lastModel;
   contentLayer.anchorPoint = NSZeroPoint;
   contentLayer.contentsGravity = kCAGravityTopLeft;
   contentLayer.contentsScale = 1;
-  contentLayer.bounds = self.layer.bounds;
+  contentLayer.bounds = NSMakeRect(0.0f, 0.0f, 16.0f, 9.0f);
   contentLayer.edgeAntialiasingMask = 0;
   contentLayer.opaque = YES;
 
   [self.layer addSublayer:contentLayer];
 
-  self.needsDisplay = YES;
+  // Figure out the size of the video in the model, then center the content.
+  VideoHolder* holder = self;
+  [model waitForVideoAssetFirstTrack:^(AVAssetTrack* track) {
+    if (!track) {
+      return;
+    }
+
+    CGSize trackSize = track.naturalSize;
+    if (trackSize.width >= 0.0 && trackSize.height >= 0.0) {
+      aspectRatio = trackSize.width / trackSize.height;
+    } else {
+      aspectRatio = 16.0f / 9.0f;
+    }
+
+    dispatch_async(dispatch_get_main_queue(), ^{
+      [holder centerContentLayer];
+    });
+  }];
+}
+
+- (void)centerContentLayer {
+  assert(contentLayer);
+  CGSize layerSize = self.layer.bounds.size;
+
+  // First, see if we are height-limited.
+  CGFloat requestedWidth = layerSize.height * aspectRatio;
+  CGFloat requestedHeight = layerSize.height;
+  if (requestedWidth > layerSize.width) {
+    requestedWidth = layerSize.width;
+    requestedHeight = layerSize.width / aspectRatio;
+  }
+
+  [CATransaction begin];
+  [CATransaction setDisableActions:YES];
+  contentLayer.position = CGPointMake((layerSize.width - requestedWidth) * 0.5f, (layerSize.height - requestedHeight) * 0.5f);
+  contentLayer.bounds = CGRectMake(0.0f, 0.0f, requestedWidth, requestedHeight);
+  [CATransaction commit];
 }
 
 @end
