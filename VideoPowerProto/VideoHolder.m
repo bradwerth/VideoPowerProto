@@ -6,22 +6,33 @@
 //
 
 #import <AVKit/AVKit.h>
+#import <CoreMedia/CoreMedia.h>
 
 #import "VideoHolder.h"
+#import "MainViewController.h"
 #import "VideoModel.h"
 
-@implementation VideoHolder
+@implementation VideoHolder {
+  // Retained reference to the layer that actually displays the video content.
+  CALayer* contentLayer;
+  VideoModel* lastModel;
+  float aspectRatio;
+  dispatch_queue_global_t queueToUse;
+  CMSimpleQueueRef storedBuffers;
+}
 
-// Retained reference to the layer that actually displays the video content.
-CALayer* contentLayer;
-VideoModel* lastModel;
-float aspectRatio;
+const int32_t kStoredBufferMax = 10;
 
 - (void)awakeFromNib {
   // Treat this as our initialization method, and set properties we'll need to
   // act as a layer-backed view.
   contentLayer = nil;
   lastModel = nil;
+  aspectRatio = 1.0f;
+  queueToUse = dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0);
+
+  CMSimpleQueueCreate(kCFAllocatorDefault, kStoredBufferMax, &storedBuffers);
+  assert(storedBuffers);
 
   self.wantsLayer = YES;
 
@@ -47,11 +58,12 @@ float aspectRatio;
   }];
 }
 
-- (void)handleDecodedFrame:(CMSampleBufferRef)buffer {
+- (BOOL)handleDecodedFrame:(CMSampleBufferRef)buffer {
   CMFormatDescriptionRef format = CMSampleBufferGetFormatDescription(buffer);
   if (!format) {
-    NSLog(@"Ignoring sample buffer with no format descriptor: %@.", buffer);
-    return;
+    //NSLog(@"Ignoring sample buffer with no format descriptor: %@.", buffer);
+    // We want more frames.
+    return YES;
   }
 
   if (lastModel.layerClass == LayerClassCALayer) {
@@ -60,28 +72,59 @@ float aspectRatio;
     CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(buffer);
     IOSurfaceRef surface = CVPixelBufferGetIOSurface((CVPixelBufferRef)imageBuffer);
     if (!surface) {
-      return;
+      return NO;
     }
     contentLayer.contents = (id)surface;
   } else if (lastModel.layerClass == LayerClassAVSampleBufferDisplayLayer) {
     AVSampleBufferDisplayLayer* avLayer = (AVSampleBufferDisplayLayer*)contentLayer;
-    [avLayer enqueueSampleBuffer:buffer];
+
+    // See if the layer can accept more buffers.
+    if ([avLayer isReadyForMoreMediaData]) {
+      [avLayer enqueueSampleBuffer:buffer];
+    } else {
+      [self storeDecodedFrame:buffer];
+      return NO;
+    }
   }
+
+  // We want more frames.
+  return YES;
 }
 
 - (void)resetWithModel:(VideoModel*)model {
-  lastModel = model;
+  // Stop any requests from our last model.
+  if (lastModel && lastModel.layerClass == LayerClassAVSampleBufferDisplayLayer && contentLayer) {
+    AVSampleBufferDisplayLayer* avLayer = (AVSampleBufferDisplayLayer*)contentLayer;
+    [avLayer stopRequestingMediaData];
+  }
+
+  // Clear out any stored buffers.
+  CMSampleBufferRef buffer;
+  while ((buffer = (__bridge CMSampleBufferRef)(CMSimpleQueueDequeue(storedBuffers)))) {
+    CFRelease(buffer);
+  }
+
+  // Copy the model to lock in its values, then release the old model.
+  VideoModel *oldModel = lastModel;
+  lastModel = [model copy];
+  [oldModel release];
+
+  VideoHolder* holder = self;
 
   // Remove content layer and all the sublayers of the backing layer.
   [contentLayer release];
   self.layer.sublayers = nil;
 
-  if (model.layerClass == LayerClassCALayer) {
+  if (lastModel.layerClass == LayerClassCALayer) {
     NSLog(@"Resetting with CALayer.");
     contentLayer = [[CALayer layer] retain];
-  } else if (model.layerClass == LayerClassAVSampleBufferDisplayLayer) {
+  } else if (lastModel.layerClass == LayerClassAVSampleBufferDisplayLayer) {
     NSLog(@"Resetting with AVSampleBufferDisplayLayer.");
-    contentLayer = [[AVSampleBufferDisplayLayer layer] retain];
+    AVSampleBufferDisplayLayer* avLayer = [[AVSampleBufferDisplayLayer layer] retain];
+    [avLayer requestMediaDataWhenReadyOnQueue:queueToUse usingBlock:^{
+      [holder enqueueMoreFrames];
+    }];
+    contentLayer = avLayer;
   }
 
   contentLayer.position = NSZeroPoint;
@@ -95,8 +138,7 @@ float aspectRatio;
   [self.layer addSublayer:contentLayer];
 
   // Figure out the size of the video in the model, then center the content.
-  VideoHolder* holder = self;
-  [model waitForVideoAssetFirstTrack:^(AVAssetTrack* track) {
+  [lastModel waitForVideoAssetFirstTrack:^(AVAssetTrack* track) {
     if (!track) {
       return;
     }
@@ -131,6 +173,43 @@ float aspectRatio;
   contentLayer.position = CGPointMake((layerSize.width - requestedWidth) * 0.5f, (layerSize.height - requestedHeight) * 0.5f);
   contentLayer.bounds = CGRectMake(0.0f, 0.0f, requestedWidth, requestedHeight);
   [CATransaction commit];
+}
+
+- (void)storeDecodedFrame:(CMSampleBufferRef)buffer {
+  CFRetain(buffer);
+  CMSimpleQueueEnqueue(storedBuffers, buffer);
+}
+
+- (BOOL)wantsMoreFrames {
+  if (lastModel && lastModel.layerClass == LayerClassAVSampleBufferDisplayLayer && contentLayer) {
+    AVSampleBufferDisplayLayer* avLayer = (AVSampleBufferDisplayLayer*)contentLayer;
+    return [avLayer isReadyForMoreMediaData];
+  }
+  return NO;
+}
+
+- (void)enqueueMoreFrames {
+  // Enqueue every buffer we're holding, and request more if we need more.
+  if (lastModel && lastModel.layerClass == LayerClassAVSampleBufferDisplayLayer && contentLayer) {
+    AVSampleBufferDisplayLayer* avLayer = (AVSampleBufferDisplayLayer*)contentLayer;
+    while ([avLayer isReadyForMoreMediaData]) {
+      // Enqueue the first buffer from our queue.
+      const CMSampleBufferRef buffer = (__bridge CMSampleBufferRef)(CMSimpleQueueDequeue(storedBuffers));
+      if (!buffer) {
+        // This should only occur when our queue is empty.
+        assert(CMSimpleQueueGetCount(storedBuffers) == 0);
+        break;
+      }
+
+      [avLayer enqueueSampleBuffer:buffer];
+      CFRelease(buffer);
+    }
+  }
+
+  // If our queue is now empty, request more frames.
+  if (CMSimpleQueueGetCount(storedBuffers) == 0) {
+    [self.controller requestFrames];
+  }
 }
 
 @end

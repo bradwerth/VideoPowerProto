@@ -15,6 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface VideoDecoder : NSObject
 - (instancetype)initWithController:(MainViewController*)inController;
 - (void)resetWithModel:(VideoModel*)model;
+- (void)requestFrames;
 @end
 
 NS_ASSUME_NONNULL_END

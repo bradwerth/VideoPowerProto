@@ -8,12 +8,16 @@
 #import <Cocoa/Cocoa.h>
 
 @class VideoModel;
+@class MainViewController;
 
 NS_ASSUME_NONNULL_BEGIN
 
 @interface VideoHolder : NSView
+@property (weak) IBOutlet MainViewController* controller;
+
 - (void)resetWithModel:(VideoModel*)model;
-- (void)handleDecodedFrame:(CMSampleBufferRef)buffer;
+- (BOOL)wantsMoreFrames;
+- (BOOL)handleDecodedFrame:(CMSampleBufferRef)buffer;
 @end
 
 NS_ASSUME_NONNULL_END

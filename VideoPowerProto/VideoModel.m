@@ -10,6 +10,14 @@
 @implementation VideoModel
 // Everything of interest is managed by our properties.
 
+- (nonnull id)copyWithZone:(nullable NSZone*)zone {
+  VideoModel* model = [[VideoModel alloc] init];
+  model.buffering = self.buffering;
+  model.layerClass = self.layerClass;
+  model.pixelBuffer = self.pixelBuffer;
+  return model;
+}
+
 - (NSString*) videoFilename {
   return @"HDRMovie.mov";
 }

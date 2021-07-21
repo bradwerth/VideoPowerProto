@@ -10,13 +10,13 @@
 NS_ASSUME_NONNULL_BEGIN
 
 @interface MainViewController : NSViewController
-
 - (IBAction)selectLayerClass:(id)sender;
 - (IBAction)selectBuffering:(id)sender;
 - (IBAction)clickPixelBufferButton:(id)sender;
 
-- (void)handleDecodedFrame:(CMSampleBufferRef)buffer;
-
+- (BOOL)wantsMoreFrames;
+- (BOOL)handleDecodedFrame:(CMSampleBufferRef)buffer;
+- (void)requestFrames;
 @end
 
 NS_ASSUME_NONNULL_END

@@ -28,11 +28,14 @@ typedef NS_OPTIONS(NSInteger, PixelBuffer) {
   IOSurfaceCoreAnimation = 1 << 1,
 };
 
-@interface VideoModel : NSObject
+@interface VideoModel : NSObject <NSCopying>
 
+// These properties should be copied in the implementation of copyWithZone.
 @property LayerClass layerClass;
 @property Buffering buffering;
 @property PixelBuffer pixelBuffer;
+
+- (nonnull id)copyWithZone:(nullable NSZone*)zone;
 
 // For now, we're going to hardcode this property so we make a custom getter.
 // We set it as readonly so we don't forget and try to overwrite while we still

@@ -22,12 +22,11 @@
 @property (strong) IBOutlet NSButton* pixelBufferIOSurfaceCoreAnimationCompatibilityButton;
 
 @property (strong) IBOutlet VideoHolder* videoHolder;
-
 @end
 
-@implementation MainViewController
-
-VideoDecoder* videoDecoder;
+@implementation MainViewController {
+  VideoDecoder* videoDecoder;
+}
 
 - (void)viewDidLoad {
   [super viewDidLoad];
@@ -60,8 +59,8 @@ VideoDecoder* videoDecoder;
 }
 
 - (void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context {
-  // All changes to the model require resetting the videoHolder and videoDecoder,
-  // in that order.
+  // All changes to the model require resetting the videoHolder and
+  // videoDecoder, in that order.
   [self resetVideoHolder];
   [self resetVideoDecoder];
 }
@@ -74,8 +73,16 @@ VideoDecoder* videoDecoder;
   [self.videoHolder resetWithModel:self.videoModel];
 }
 
-- (void)handleDecodedFrame:(CMSampleBufferRef)buffer {
-  [self.videoHolder handleDecodedFrame:buffer];
+- (BOOL)wantsMoreFrames {
+  return [self.videoHolder wantsMoreFrames];
+}
+
+- (BOOL)handleDecodedFrame:(CMSampleBufferRef)buffer {
+  return [self.videoHolder handleDecodedFrame:buffer];
+}
+
+- (void)requestFrames {
+  [videoDecoder requestFrames];
 }
 
 @end
