@@ -39,9 +39,17 @@
   [self.videoModel addObserver:self forKeyPath:@"pixelBuffer" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"videoFilename" options:0 context:nil];
 
-  // Setup our initial videoHolder and videoDecoder.
-  [self resetVideoHolder];
-  [self resetVideoDecoder];
+  // Setup our initial video.
+  [self clearVideo];
+}
+
+- (void)dealloc {
+  [videoDecoder release];
+  [self.videoModel removeObserver:self forKeyPath:@"layerClass"];
+  [self.videoModel removeObserver:self forKeyPath:@"buffering"];
+  [self.videoModel removeObserver:self forKeyPath:@"pixelBuffer"];
+  [self.videoModel removeObserver:self forKeyPath:@"videoFilename"];
+  [super dealloc];
 }
 
 - (IBAction)selectLayerClass:(NSPopUpButton*)sender {
@@ -59,18 +67,29 @@
 }
 
 - (void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context {
-  // All changes to the model require resetting the videoHolder and
-  // videoDecoder, in that order.
-  [self resetVideoHolder];
-  [self resetVideoDecoder];
+  // All changes to the model require resetting the videoDecoder first, and
+  // when that is complete, resetting the videoHolder. We accomplish that by
+  // passing a completion block to the decoder.
+  [self clearVideo];
+  [self resetVideo];
 }
 
-- (void)resetVideoDecoder {
-  [videoDecoder resetWithModel:self.videoModel];
+- (void)clearVideo {
+  [self.videoHolder resetWithModel:nil];
+  [videoDecoder resetWithModel:nil completionHandler:nil];
 }
 
-- (void)resetVideoHolder {
-  [self.videoHolder resetWithModel:self.videoModel];
+- (void)resetVideo {
+  MainViewController* controller = self;
+  [videoDecoder resetWithModel:self.videoModel completionHandler:^(bool success) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+      if (success) {
+        [controller.videoHolder resetWithModel:self.videoModel];
+      } else {
+        [controller.videoHolder resetWithModel:nil];
+      }
+    });
+  }];
 }
 
 - (BOOL)wantsMoreFrames {
@@ -82,7 +101,7 @@
 }
 
 - (void)requestFrames {
-  [videoDecoder requestFrames];
+  [videoDecoder generateFrames];
 }
 
 @end

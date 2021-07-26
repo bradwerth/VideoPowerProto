@@ -16,11 +16,8 @@
   MainViewController* controller;
   AVAsset* asset;
   AVAssetTrack* firstVideoTrack;
-  BOOL readyToRead;
   AVAssetReader* assetReader;
   AVAssetReaderTrackOutput* assetOutput;
-
-  dispatch_queue_t serialDecoderQueue;
 }
 
 - (instancetype)initWithController:(MainViewController *)inController {
@@ -28,27 +25,18 @@
   controller = inController;
   asset = nil;
   firstVideoTrack = nil;
-  readyToRead = NO;
   assetReader = nil;
   assetOutput = nil;
-
-  serialDecoderQueue = dispatch_queue_create("VideoPowerProto.SerialDecoder", DISPATCH_QUEUE_SERIAL);
   return self;
 }
 
 - (void)dealloc {
-  VideoDecoder* decoder = self;
-  dispatch_async(serialDecoderQueue, ^{
-    // Get rid of any existing decoding.
-    [decoder stopDecode];
-  });
-  dispatch_release(serialDecoderQueue);
+  // Get rid of any existing decoding.
+  [self stopDecode];
   [super dealloc];
 }
 
 - (void)stopDecode {
-  readyToRead = NO;
-
   if (assetReader) {
     [assetReader cancelReading];
   }
@@ -65,30 +53,33 @@
   asset = nil;
 }
 
-- (void)resetWithModel:(VideoModel *)model {
-  // We have to do this asynchronously on the same serial queue we use for the
-  // decoding operations, since it manipulates our asset reading structures.
-  AVAsset* retainedAsset = [[model videoAsset] retain];
+- (void)resetWithModel:(nullable VideoModel*)model completionHandler:(nullable void (^)(bool))block {
+  // Get rid of any existing decoding.
+  [self stopDecode];
 
-  VideoDecoder* decoder = self;
-  dispatch_async(serialDecoderQueue, ^{
-    // Get rid of any existing decoding.
-    [decoder stopDecode];
-
-    decoder->asset = retainedAsset;
-
+  asset = [[model videoAsset] retain];
+  if (asset) {
     // Load the tracks asynchronously, and then process them.
+    VideoDecoder* decoder = self;
     [asset loadValuesAsynchronouslyForKeys:@[@"tracks"] completionHandler:^{
-      [decoder handleTracks];
+      [decoder handleTracksWithCompletionHandler:block];
     }];
-  });
+  } else {
+    // Call the block, if it is non-null.
+    if (block) {
+      block(NO);
+    }
+  }
 }
 
-- (void)handleTracks {
+- (void)handleTracksWithCompletionHandler:(nullable void (^)(bool))block {
   NSError* error = nil;
   AVKeyValueStatus status = [asset statusOfValueForKey:@"tracks" error:&error];
   if (status == AVKeyValueStatusFailed) {
     NSLog(@"Track loading failed with: %@.", error);
+    if (block) {
+      block(NO);
+    }
     return;
   }
 
@@ -96,13 +87,16 @@
   firstVideoTrack = [[[asset tracksWithMediaType:AVMediaTypeVideo] firstObject] retain];
   if (!firstVideoTrack) {
     NSLog(@"No video track.");
+    if (block) {
+      block(NO);
+    }
     return;
   }
 
-  VideoDecoder* decoder = self;
-  dispatch_async(serialDecoderQueue, ^{
-    [decoder readAssetFromBeginning];
-  });
+  BOOL success = [self readAssetFromBeginning];
+  if (block) {
+    block(success);
+  }
 }
 
 - (BOOL)readAssetFromBeginning {
@@ -128,64 +122,67 @@
   assetOutput.alwaysCopiesSampleData = NO;
   [assetReader addOutput:assetOutput];
   [assetReader startReading];
-  readyToRead = YES;
   return YES;
 }
 
-- (void)requestFrames {
-  if (!readyToRead) {
-    // Too early! No reader available yet.
-    return;
-  }
-
-  VideoDecoder* decoder = self;
-  dispatch_async(serialDecoderQueue, ^{
-    [decoder generateFrames];
-  });
-}
-
 - (void)generateFrames {
-  // If not ready to read, exit.
-  if (!readyToRead) {
-    return;
-  }
-
-  assert(assetReader);
-  assert(assetOutput);
-
-  // Capture as many sample buffers as we can.
-  BOOL wantsMoreFrames = [controller wantsMoreFrames];
-  while (wantsMoreFrames) {
-    // Grab frames while we can, as long as our controller wants them.
-    AVAssetReaderStatus status = [assetReader status];
-    while (status == AVAssetReaderStatusReading) {
-      CMSampleBufferRef buffer = [assetOutput copyNextSampleBuffer];
-      if (buffer) {
-        wantsMoreFrames = [controller handleDecodedFrame:buffer];
-        CFRelease(buffer);
-      }
-      status = [assetReader status];
-      if (!wantsMoreFrames) {
-        break;
-      }
+  // This function is called from other threads, and has to be sensitive to
+  // our asset structures being released during the call.
+  @autoreleasepool {
+    AVAssetReader* reader = [[assetReader retain] autorelease];
+    AVAssetReaderOutput* output = [[assetOutput retain] autorelease];
+    if (!reader || !output) {
+      return;
     }
 
-    // Check status to see how to proceed.
-    switch (status) {
-      case AVAssetReaderStatusCompleted:
-      case AVAssetReaderStatusFailed:
-      case AVAssetReaderStatusCancelled:
-      case AVAssetReaderStatusUnknown:
-        // That's enough for now. Our controller can try again.
-        readyToRead = NO;
-        return;
-      default:
-        // The only reason we should reach this is if we are still reading and
-        // our controller doesn't want any more frames.
-        assert(status == AVAssetReaderStatusReading);
-        assert(!wantsMoreFrames);
-        break;
-    };
+    // Capture as many sample buffers as we can.
+    BOOL wantsMoreFrames = [controller wantsMoreFrames];
+    //NSLog(@"generateFrames: start on %@.", [NSThread currentThread]);
+    while (wantsMoreFrames) {
+      // Grab frames while we can, as long as our controller wants them.
+      AVAssetReaderStatus status = [reader status];
+      while (status == AVAssetReaderStatusReading) {
+        CMSampleBufferRef buffer = [output copyNextSampleBuffer];
+        if (buffer) {
+          //NSLog(@"generateFrames: pushing frame.");
+          wantsMoreFrames = [controller handleDecodedFrame:buffer];
+          CFRelease(buffer);
+        }
+        status = [reader status];
+        if (!wantsMoreFrames) {
+          break;
+        }
+      }
+
+      // Check status to see how to proceed.
+      switch (status) {
+        case AVAssetReaderStatusCompleted: {
+          BOOL didReset = [self readAssetFromBeginning];
+          if (!didReset) {
+            return;
+          }
+          // Re-establish our local asset structures.
+          reader = [[assetReader retain] autorelease];
+          output = [[assetOutput retain] autorelease];
+          if (!reader || !output) {
+            return;
+          }
+          break;
+        }
+        case AVAssetReaderStatusFailed:
+        case AVAssetReaderStatusCancelled:
+        case AVAssetReaderStatusUnknown:
+          // That's enough for now. Our controller can try again.
+          return;
+        default:
+          // The only reason we should reach this is if we are still reading and
+          // our controller doesn't want any more frames.
+          assert(status == AVAssetReaderStatusReading);
+          assert(!wantsMoreFrames);
+          break;
+      };
+    }
+    //NSLog(@"generateFrames: end.");
   }
 }
 

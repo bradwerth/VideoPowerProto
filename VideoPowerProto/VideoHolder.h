@@ -15,7 +15,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface VideoHolder : NSView
 @property (weak) IBOutlet MainViewController* controller;
 
-- (void)resetWithModel:(VideoModel*)model;
+- (void)resetWithModel:(VideoModel* _Nullable)model;
 - (BOOL)wantsMoreFrames;
 - (BOOL)handleDecodedFrame:(CMSampleBufferRef)buffer;
 @end
