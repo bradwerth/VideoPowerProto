@@ -13,10 +13,14 @@ NS_ASSUME_NONNULL_BEGIN
 - (IBAction)selectLayerClass:(id)sender;
 - (IBAction)selectBuffering:(id)sender;
 - (IBAction)clickPixelBufferButton:(id)sender;
+- (IBAction)clickFullscreenButton:(id)sender;
 
 - (BOOL)wantsMoreFrames;
 - (BOOL)handleDecodedFrame:(CMSampleBufferRef)buffer;
 - (void)requestFrames;
+
+- (void)windowWillEnterFullScreen:(NSNotification *)notification;
+- (void)windowWillExitFullScreen:(NSNotification *)notification;
 @end
 
 NS_ASSUME_NONNULL_END

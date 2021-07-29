@@ -25,12 +25,18 @@
 @end
 
 @implementation MainViewController {
+  NSWindow* oldWindow;
+  NSView* oldContentView;
+  NSView* oldVideoHolderSuperview;
   VideoDecoder* videoDecoder;
 }
 
 - (void)viewDidLoad {
   [super viewDidLoad];
 
+  oldWindow = nil;
+  oldContentView = nil;
+  oldVideoHolderSuperview = nil;
   videoDecoder = [[VideoDecoder alloc] initWithController:self];
 
   // Listen to all the properties that might change in our model.
@@ -44,6 +50,9 @@
 }
 
 - (void)dealloc {
+  [oldWindow release];
+  [oldContentView release];
+  [oldVideoHolderSuperview release];
   [videoDecoder release];
   [self.videoModel removeObserver:self forKeyPath:@"layerClass"];
   [self.videoModel removeObserver:self forKeyPath:@"buffering"];
@@ -64,6 +73,10 @@
   bool isOn = (sender.state == NSControlStateValueOn);
   PixelBuffer oldValue = [self videoModel].pixelBuffer;
   self.videoModel.pixelBuffer = (isOn ? (oldValue |= sender.tag) : (oldValue &= ~sender.tag));
+}
+
+- (IBAction)clickFullscreenButton:(NSButton*)sender {
+  [self.view.window toggleFullScreen:sender];
 }
 
 - (void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context {
@@ -104,4 +117,24 @@
   [videoDecoder generateFrames];
 }
 
+- (void)windowWillEnterFullScreen:(NSNotification *)notification {
+  oldWindow = [self.view.window retain];
+  oldContentView = [oldWindow.contentView retain];
+  oldVideoHolderSuperview = [self.videoHolder.superview retain];
+
+  [self.videoHolder removeFromSuperview];
+  oldWindow.contentView = self.videoHolder;
+}
+
+- (void)windowWillExitFullScreen:(NSNotification *)notification {
+  oldWindow.contentView = oldContentView;
+  [oldVideoHolderSuperview addSubview:self.videoHolder];
+
+  [oldWindow release];
+  oldWindow = nil;
+  [oldContentView release];
+  oldContentView = nil;
+  [oldVideoHolderSuperview release];
+  oldVideoHolderSuperview = nil;
+}
 @end
