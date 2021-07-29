@@ -19,7 +19,6 @@
   // avLayer is an unretained alias of contentLayer that indicates we're using
   // this type of layer.
   AVSampleBufferDisplayLayer* avLayer;
-  //CMSampleBufferRef emptyFrame;
   VideoModel* lastModel;
   float aspectRatio;
   dispatch_queue_global_t queueToUse;
@@ -32,7 +31,6 @@ const int32_t kStoredBufferMax = 10;
   // act as a layer-backed view.
   contentLayer = nil;
   avLayer = nil;
-  //emptyFrame = nil;
   lastModel = nil;
   aspectRatio = 1.0f;
   queueToUse = dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0);
@@ -69,15 +67,23 @@ const int32_t kStoredBufferMax = 10;
 
   // Should we post that we've consumed this buffer?
   if ((attachment = CMGetAttachment(buffer, kCMSampleBufferAttachmentKey_PostNotificationWhenConsumed, NULL))) {
-    NSLog(@"handleDecodedFrame post notification buffer.");
+    //NSLog(@"handleDecodedFrame post notification buffer.");
     CFNotificationCenterRef center = CFNotificationCenterGetLocalCenter();
     CFNotificationCenterPostNotification(center, kCMSampleBufferConsumerNotification_BufferConsumed , self, attachment, false);
   }
 
   // Is this the last frame from the media?
   if ((attachment = CMGetAttachment(buffer, kCMSampleBufferAttachmentKey_PermanentEmptyMedia, NULL))) {
-    NSLog(@"handleDecodedFrame last frame.");
-    [self restartAfterLastFrameRendered];
+    //NSLog(@"handleDecodedFrame last frame.");
+
+    // Stop requesting frames.
+    [avLayer stopRequestingMediaData];
+
+    // Get the time this frame would be rendered, then loop once we reach that
+    // time.
+    CMTime timeToLoop = CMSampleBufferGetOutputPresentationTimeStamp(buffer);
+    [self restartAtTime:timeToLoop];
+    // No more frames, please.
     return NO;
   }
 
@@ -88,37 +94,6 @@ const int32_t kStoredBufferMax = 10;
     // We want more frames.
     return YES;
   }
-
-  // Detect if the buffer contains a keyframe.
-  BOOL containsKeyframe = NO;
-  CMItemCount sampleCount = CMSampleBufferGetNumSamples(buffer);
-  assert(sampleCount > 0);
-  CFArrayRef sampleAttachments = CMSampleBufferGetSampleAttachmentsArray(buffer, NO);
-  if (sampleAttachments) {
-    for (CFIndex i = 0; i < sampleCount; ++i) {
-      CFDictionaryRef dict = CFArrayGetValueAtIndex(sampleAttachments, i);
-      assert(dict);
-      CFBooleanRef dependsRef = CFDictionaryGetValue(dict, kCMSampleAttachmentKey_DependsOnOthers);
-      Boolean dependsOnOthers = CFBooleanGetValue(dependsRef);
-      if (!dependsOnOthers) {
-        containsKeyframe = YES;
-        break;
-      }
-    }
-  }
-
-  /*
-  // If we don't have an emptyFrame, create one in this format.
-  if (!emptyFrame) {
-    CMSampleTimingInfo timing;
-    timing.duration = CMTimeMake(0, 1);
-    timing.decodeTimeStamp = kCMTimeInvalid;
-    timing.presentationTimeStamp = CMTimeMake(0, 1);
-    CMSampleBufferCreateReady(kCFAllocatorDefault, NULL, format, 0, 1, &timing, 0, NULL, &emptyFrame);
-    assert(emptyFrame);
-    CMSetAttachment(emptyFrame, kCMSampleBufferAttachmentKey_EmptyMedia, kCFBooleanTrue, kCMAttachmentMode_ShouldNotPropagate);
-  }
-  */
 
   if (lastModel.layerClass == LayerClassCALayer) {
     // Extract the image from the buffer.
@@ -145,13 +120,6 @@ const int32_t kStoredBufferMax = 10;
     assert([avLayer isReadyForMoreMediaData]);
     [avLayer enqueueSampleBuffer:buffer];
 
-    /*
-    // If we posted a keyframe, stop requesting frames.
-    if (containsKeyframe) {
-      return NO;
-    }
-    */
-
     return [avLayer isReadyForMoreMediaData];
   }
 
@@ -160,14 +128,6 @@ const int32_t kStoredBufferMax = 10;
 }
 
 - (void)resetWithModel:(VideoModel* _Nullable)model {
-  /*
-  // Get rid of our emptyFrame.
-  if (emptyFrame) {
-    CFRelease(emptyFrame);
-    emptyFrame = nil;
-  }
-  */
-
   // Copy the model to lock in its values, then release the old model.
   VideoModel *oldModel = lastModel;
   lastModel = [model copy];
@@ -275,19 +235,49 @@ const int32_t kStoredBufferMax = 10;
   [self.controller requestFrames];
 }
 
-- (void)restartAfterLastFrameRendered {
+- (void)restartAtTime:(CMTime)targetTime {
   if (avLayer) {
-    [avLayer stopRequestingMediaData];
-    //[avLayer enqueueSampleBuffer:emptyFrame];
+    // Define a block that we'll use to reset the video.
+    void (^loopBlock)(CFRunLoopTimerRef) = ^(CFRunLoopTimerRef timer) {
+      [avLayer flush];
+      CMTimebaseSetTime(avLayer.controlTimebase, CMTimeMake(0, 1));
+      VideoHolder* holder = self;
+      [avLayer requestMediaDataWhenReadyOnQueue:queueToUse usingBlock:^{
+        [holder enqueueMoreFrames];
+      }];
+    };
 
-    // Ideally these steps should be delayed until we've displayed the last
-    // frame.
-    [avLayer flush];
-    CMTimebaseSetTime(avLayer.controlTimebase, CMTimeMake(0, 1));
-    VideoHolder* holder = self;
-    [avLayer requestMediaDataWhenReadyOnQueue:queueToUse usingBlock:^{
-      [holder enqueueMoreFrames];
-    }];
+    // Setup a timer to trigger at time.
+    CMTime nowTime = CMTimebaseGetTime(avLayer.controlTimebase);
+    CMTime timeDiff = CMTimeSubtract(targetTime, nowTime);
+    Float64 seconds = CMTimeGetSeconds(timeDiff);
+    if (seconds <= 0.0) {
+      // Just call the block right now.
+      loopBlock(nil);
+      return;
+    }
+
+    // Schedule the block to be called in seconds from now.
+    CFAbsoluteTime absoluteNow = CFAbsoluteTimeGetCurrent();
+    CFAbsoluteTime absoluteTarget = absoluteNow + seconds;
+
+    CFRunLoopRef runLoop = CFRunLoopGetMain();
+    CFRunLoopTimerRef loopTimer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, absoluteTarget, 0, 0, 0, loopBlock);
+    CFRunLoopAddTimer(runLoop, loopTimer, kCFRunLoopDefaultMode);
+    CFRelease(loopTimer);
+
+    // TODO: In theory, we should be able to associate the timer with avLayer
+    // controlTimebase by calling CMTimebaseSetTimerNextFireTime. This is
+    // useful in case the time or rate of the timebase is ever changed, it
+    // would ensure that the timer fires at the expected time. However, that
+    // call doesn't have any noticeable effect, so we use the absolute time and
+    // an absolute timer instead.
+    /*
+    // Associate the timer with the timebase, then reset the time relative to
+    // the timebase.
+    CMTimebaseAddTimer(avLayer.controlTimebase, loopTimer, runLoop);
+    CMTimebaseSetTimerNextFireTime(avLayer.controlTimebase, loopTimer, targetTime, 0);
+    */
   }
 }
 
