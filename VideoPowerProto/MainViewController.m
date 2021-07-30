@@ -129,10 +129,9 @@
   oldWindow.contentView = self.videoHolder;
 }
 
-- (void)windowDidExitFullScreen:(NSNotification *)notification {
+- (void)windowWillExitFullScreen:(NSNotification *)notification {
   oldWindow.contentView = oldContentView;
   [oldVideoHolderSuperview addSubview:self.videoHolder];
-  self.videoHolder.frame = oldVideoHolderFrame;
 
   [oldVideoHolderSuperview release];
   oldVideoHolderSuperview = nil;
@@ -140,5 +139,9 @@
   oldWindow = nil;
   [oldContentView release];
   oldContentView = nil;
+}
+
+- (void)windowDidExitFullScreen:(NSNotification *)notification {
+  self.videoHolder.frame = oldVideoHolderFrame;
 }
 @end
