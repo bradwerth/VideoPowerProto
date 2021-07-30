@@ -28,6 +28,7 @@
   NSWindow* oldWindow;
   NSView* oldContentView;
   NSView* oldVideoHolderSuperview;
+  NSRect oldVideoHolderFrame;
   VideoDecoder* videoDecoder;
 }
 
@@ -122,19 +123,22 @@
   oldContentView = [oldWindow.contentView retain];
   oldVideoHolderSuperview = [self.videoHolder.superview retain];
 
+  oldVideoHolderFrame = self.videoHolder.frame;
+
   [self.videoHolder removeFromSuperview];
   oldWindow.contentView = self.videoHolder;
 }
 
-- (void)windowWillExitFullScreen:(NSNotification *)notification {
+- (void)windowDidExitFullScreen:(NSNotification *)notification {
   oldWindow.contentView = oldContentView;
   [oldVideoHolderSuperview addSubview:self.videoHolder];
+  self.videoHolder.frame = oldVideoHolderFrame;
 
+  [oldVideoHolderSuperview release];
+  oldVideoHolderSuperview = nil;
   [oldWindow release];
   oldWindow = nil;
   [oldContentView release];
   oldContentView = nil;
-  [oldVideoHolderSuperview release];
-  oldVideoHolderSuperview = nil;
 }
 @end

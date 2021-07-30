@@ -207,19 +207,19 @@ const int32_t kStoredBufferMax = 10;
   if (!contentLayer) {
     return;
   }
-  CGSize layerSize = self.layer.bounds.size;
+  CGSize viewSize = self.bounds.size;
 
   // First, see if we are height-limited.
-  CGFloat requestedWidth = layerSize.height * aspectRatio;
-  CGFloat requestedHeight = layerSize.height;
-  if (requestedWidth > layerSize.width) {
-    requestedWidth = layerSize.width;
-    requestedHeight = layerSize.width / aspectRatio;
+  CGFloat requestedWidth = viewSize.height * aspectRatio;
+  CGFloat requestedHeight = viewSize.height;
+  if (requestedWidth > viewSize.width) {
+    requestedWidth = viewSize.width;
+    requestedHeight = viewSize.width / aspectRatio;
   }
 
   [CATransaction begin];
   [CATransaction setDisableActions:YES];
-  contentLayer.position = CGPointMake((layerSize.width - requestedWidth) * 0.5f, (layerSize.height - requestedHeight) * 0.5f);
+  contentLayer.position = CGPointMake((viewSize.width - requestedWidth) * 0.5f, (viewSize.height - requestedHeight) * 0.5f);
   contentLayer.bounds = CGRectMake(0.0f, 0.0f, requestedWidth, requestedHeight);
   [CATransaction commit];
 }

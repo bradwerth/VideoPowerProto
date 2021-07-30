@@ -20,7 +20,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (void)requestFrames;
 
 - (void)windowWillEnterFullScreen:(NSNotification *)notification;
-- (void)windowWillExitFullScreen:(NSNotification *)notification;
+- (void)windowDidExitFullScreen:(NSNotification *)notification;
 @end
 
 NS_ASSUME_NONNULL_END
