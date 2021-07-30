@@ -35,9 +35,8 @@ const int32_t kStoredBufferMax = 10;
   aspectRatio = 1.0f;
   queueToUse = dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0);
 
-  self.wantsLayer = YES;
-
   // Set some initial properties on our backing layer.
+  self.wantsLayer = YES;
   if (!self.layer) {
     [self makeBackingLayer];
   }
@@ -49,6 +48,7 @@ const int32_t kStoredBufferMax = 10;
   self.layer.contentsScale = 1;
   self.layer.bounds = NSZeroRect;
   self.layer.edgeAntialiasingMask = 0;
+  self.layer.backgroundColor = CGColorGetConstantColor(kCGColorBlack);
   self.layer.opaque = YES;
 
   // Listen to changes in our frame bounds so we can re-center our layer.

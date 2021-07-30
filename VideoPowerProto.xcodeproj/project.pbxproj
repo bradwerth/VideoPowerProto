@@ -16,6 +16,7 @@
 		A268CC822672C9B0006A180E /* VideoModel.m in Sources */ = {isa = PBXBuildFile; fileRef = A268CC812672C9B0006A180E /* VideoModel.m */; };
 		A2EACA30267BD792006FD153 /* Media in Resources */ = {isa = PBXBuildFile; fileRef = A2EACA2F267BD792006FD153 /* Media */; };
 		A2F26BCB26796A7500F4939F /* VideoDecoder.m in Sources */ = {isa = PBXBuildFile; fileRef = A2F26BCA26796A7500F4939F /* VideoDecoder.m */; };
+		A2FF896426B487C900E0B4E4 /* ColoredBackgroundView.m in Sources */ = {isa = PBXBuildFile; fileRef = A2FF896326B487C900E0B4E4 /* ColoredBackgroundView.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -38,6 +39,8 @@
 		A2F26BC72677EF3800F4939F /* HDRMovie.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = HDRMovie.mov; sourceTree = "<group>"; };
 		A2F26BC926796A7500F4939F /* VideoDecoder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VideoDecoder.h; sourceTree = "<group>"; };
 		A2F26BCA26796A7500F4939F /* VideoDecoder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VideoDecoder.m; sourceTree = "<group>"; };
+		A2FF896226B487C900E0B4E4 /* ColoredBackgroundView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ColoredBackgroundView.h; sourceTree = "<group>"; };
+		A2FF896326B487C900E0B4E4 /* ColoredBackgroundView.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ColoredBackgroundView.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -76,6 +79,8 @@
 				A258AE8526702F0200DA4405 /* AppDelegate.h */,
 				A258AE8626702F0200DA4405 /* AppDelegate.m */,
 				A258AE8826702F0400DA4405 /* Assets.xcassets */,
+				A2FF896226B487C900E0B4E4 /* ColoredBackgroundView.h */,
+				A2FF896326B487C900E0B4E4 /* ColoredBackgroundView.m */,
 				A258AE8D26702F0400DA4405 /* Info.plist */,
 				A258AE8A26702F0400DA4405 /* MainMenu.xib */,
 				A268CC7A26728D18006A180E /* MainViewController.h */,
@@ -173,6 +178,7 @@
 				A268CC7F2672AFBF006A180E /* VideoHolder.m in Sources */,
 				A2F26BCB26796A7500F4939F /* VideoDecoder.m in Sources */,
 				A268CC822672C9B0006A180E /* VideoModel.m in Sources */,
+				A2FF896426B487C900E0B4E4 /* ColoredBackgroundView.m in Sources */,
 				A268CC7C26728D18006A180E /* MainViewController.m in Sources */,
 				A258AE8726702F0200DA4405 /* AppDelegate.m in Sources */,
 			);
