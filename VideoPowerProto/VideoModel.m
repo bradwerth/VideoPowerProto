@@ -30,6 +30,10 @@
   return [AVAsset assetWithURL:url];
 }
 
+- (BOOL) canHandleBuffers {
+  return (self.layerClass == LayerClassAVSampleBufferDisplayLayer);
+}
+
 - (void) waitForVideoAssetFirstTrack: (void (^)(AVAssetTrack*))handler {
   AVAsset* asset = [self videoAsset];
   if (!asset) {

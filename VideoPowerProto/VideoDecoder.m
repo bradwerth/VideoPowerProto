@@ -14,19 +14,23 @@
 
 @implementation VideoDecoder {
   MainViewController* controller;
+  BOOL canHandleBuffers;
   AVAsset* asset;
   AVAssetTrack* firstVideoTrack;
   AVAssetReader* assetReader;
   AVAssetReaderTrackOutput* assetOutput;
+  VTDecompressionSessionRef decompressor;
 }
 
 - (instancetype)initWithController:(MainViewController *)inController {
   self = [super init];
   controller = inController;
+  canHandleBuffers = NO;
   asset = nil;
   firstVideoTrack = nil;
   assetReader = nil;
   assetOutput = nil;
+  decompressor = nil;
   return self;
 }
 
@@ -37,6 +41,8 @@
 }
 
 - (void)stopDecode {
+  [self stopDecompressor];
+
   if (assetReader) {
     [assetReader cancelReading];
   }
@@ -53,9 +59,11 @@
   asset = nil;
 }
 
-- (void)resetWithModel:(nullable VideoModel*)model completionHandler:(nullable void (^)(bool))block {
+- (void)resetWithModel:(nullable VideoModel*)model completionHandler:(void (^)(BOOL))block {
   // Get rid of any existing decoding.
   [self stopDecode];
+
+  canHandleBuffers = model.canHandleBuffers;
 
   asset = [[model videoAsset] retain];
   if (asset) {
@@ -65,21 +73,17 @@
       [decoder handleTracksWithCompletionHandler:block];
     }];
   } else {
-    // Call the block, if it is non-null.
-    if (block) {
-      block(NO);
-    }
+    // Call the block.
+    block(NO);
   }
 }
 
-- (void)handleTracksWithCompletionHandler:(nullable void (^)(bool))block {
+- (void)handleTracksWithCompletionHandler:(void (^)(BOOL))block {
   NSError* error = nil;
   AVKeyValueStatus status = [asset statusOfValueForKey:@"tracks" error:&error];
   if (status == AVKeyValueStatusFailed) {
     NSLog(@"Track loading failed with: %@.", error);
-    if (block) {
-      block(NO);
-    }
+    block(NO);
     return;
   }
 
@@ -87,16 +91,60 @@
   firstVideoTrack = [[[asset tracksWithMediaType:AVMediaTypeVideo] firstObject] retain];
   if (!firstVideoTrack) {
     NSLog(@"No video track.");
-    if (block) {
-      block(NO);
-    }
+    block(NO);
     return;
   }
 
-  BOOL success = [self readAssetFromBeginning];
-  if (block) {
-    block(success);
+  // Define a block for triggering reading and reporting success, that we can
+  // either call ourselves, or pass as a completion handler.
+  void (^readBlock)(BOOL) = ^(BOOL success) {
+    BOOL readSuccess = (success && [self readAssetFromBeginning]);
+    block(readSuccess);
+  };
+
+  BOOL needToDecompressBuffers = !canHandleBuffers;
+  if (needToDecompressBuffers) {
+    // Load the formatDescriptions asynchronously, and then process them.
+    VideoDecoder* decoder = self;
+    [firstVideoTrack loadValuesAsynchronouslyForKeys:@[@"formatDescriptions"] completionHandler:^{
+      [decoder handleFormatsWithCompletionHandler:readBlock];
+    }];
+    return;
   }
+
+  // We don't need to setup our decompressor, so call our readBlock directly.
+  readBlock(YES);
+}
+
+- (void)handleFormatsWithCompletionHandler:(void (^)(BOOL))block {
+  assert(firstVideoTrack);
+  NSUInteger formatCount = firstVideoTrack.formatDescriptions.count;
+  if (formatCount == 0) {
+    NSLog(@"No format description in first video track.");
+    block(NO);
+    return;
+  }
+
+  if (formatCount > 1) {
+    NSLog(@"WARNING: We will only decode buffers with the first reported format.");
+  }
+
+  CMFormatDescriptionRef format = (__bridge CMFormatDescriptionRef)firstVideoTrack.formatDescriptions[0];
+  VTDecompressionOutputCallbackRecord callback = {DecompressorCallback, self};
+  OSStatus error = VTDecompressionSessionCreate(kCFAllocatorDefault, format, NULL, NULL, &callback, &decompressor);
+  if (!decompressor) {
+    NSLog(@"Failed to create decompression session with error %d.", error);
+  }
+  assert(error == noErr);
+  CFRetain(decompressor);
+
+  block(YES);
+}
+
+// Define a C-style callback for our decompressor.
+void DecompressorCallback(void *decompressionOutputRefCon, void *sourceFrameRefCon, OSStatus status, VTDecodeInfoFlags infoFlags, CVImageBufferRef image, CMTime presentationTimeStamp, CMTime presentationDuration) {
+  VideoDecoder* decoder = (VideoDecoder*)decompressionOutputRefCon;
+  [decoder outputImageAsFrame:image];
 }
 
 - (BOOL)readAssetFromBeginning {
@@ -125,7 +173,7 @@
   return YES;
 }
 
-- (void)generateFrames {
+- (void)generateBuffers {
   // This function is called from other threads, and has to be sensitive to
   // our asset structures being released during the call.
   @autoreleasepool {
@@ -137,15 +185,18 @@
 
     // Capture as many sample buffers as we can.
     BOOL wantsMoreFrames = [controller wantsMoreFrames];
-    //NSLog(@"generateFrames: start on %@.", [NSThread currentThread]);
+    //NSLog(@"generateBuffers: start on %@.", [NSThread currentThread]);
     while (wantsMoreFrames) {
       // Grab frames while we can, as long as our controller wants them.
       AVAssetReaderStatus status = [reader status];
       while (status == AVAssetReaderStatusReading) {
         CMSampleBufferRef buffer = [output copyNextSampleBuffer];
         if (buffer) {
-          //NSLog(@"generateFrames: pushing frame.");
-          wantsMoreFrames = [controller handleDecodedFrame:buffer];
+          if (canHandleBuffers) {
+            wantsMoreFrames = [controller handleBuffer:buffer];
+          } else {
+            wantsMoreFrames = [self decompressBufferIntoFrames:buffer];
+          }
           CFRelease(buffer);
         }
         status = [reader status];
@@ -182,8 +233,47 @@
           break;
       };
     }
-    //NSLog(@"generateFrames: end.");
+    //NSLog(@"generateBuffers: end.");
   }
+}
+
+- (void)stopDecompressor {
+  if (decompressor) {
+    VTDecompressionSessionInvalidate(decompressor);
+    CFRelease(decompressor);
+    decompressor = nil;
+  }
+}
+
+- (BOOL)decompressBufferIntoFrames:(CMSampleBufferRef)buffer {
+  assert(decompressor);
+  BOOL wantsMoreBuffers = YES;
+
+  // Only attempt to decode buffers with sample data.
+  CMItemCount sampleCount = CMSampleBufferGetNumSamples(buffer);
+  if (sampleCount == 0) {
+    return YES;
+  }
+
+  VTDecodeFrameFlags flags = kVTDecodeFrame_EnableAsynchronousDecompression | kVTDecodeFrame_EnableTemporalProcessing;
+  OSStatus error = VTDecompressionSessionDecodeFrame(decompressor, buffer, flags, buffer, NULL);
+  BOOL decodeSuccess = (error == noErr);
+  wantsMoreBuffers &= decodeSuccess;
+  if (!decodeSuccess) {
+    NSLog(@"decompressBufferIntoFrames failed to decode buffer %@.", buffer);
+  }
+
+  //return wantsMoreBuffers;
+  return NO;
+}
+
+- (void)outputImageAsFrame:(CVImageBufferRef)image {
+  // See if we can get an IOSurface from the pixel buffer.
+  IOSurfaceRef surface = CVPixelBufferGetIOSurface(image);
+  if (!surface) {
+    return;
+  }
+  [controller handleFrame:surface];
 }
 
 @end

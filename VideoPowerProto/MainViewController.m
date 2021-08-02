@@ -90,12 +90,12 @@
 
 - (void)clearVideo {
   [self.videoHolder resetWithModel:nil];
-  [videoDecoder resetWithModel:nil completionHandler:nil];
+  [videoDecoder resetWithModel:nil completionHandler:^(BOOL _ignored){}];
 }
 
 - (void)resetVideo {
   MainViewController* controller = self;
-  [videoDecoder resetWithModel:self.videoModel completionHandler:^(bool success) {
+  [videoDecoder resetWithModel:self.videoModel completionHandler:^(BOOL success) {
     dispatch_async(dispatch_get_main_queue(), ^{
       if (success) {
         [controller.videoHolder resetWithModel:self.videoModel];
@@ -110,12 +110,17 @@
   return [self.videoHolder wantsMoreFrames];
 }
 
-- (BOOL)handleDecodedFrame:(CMSampleBufferRef)buffer {
-  return [self.videoHolder handleDecodedFrame:buffer];
+- (BOOL)handleBuffer:(CMSampleBufferRef)buffer {
+  assert([self.videoModel canHandleBuffers]);
+  return [self.videoHolder handleBuffer:buffer];
+}
+
+- (BOOL)handleFrame:(IOSurfaceRef)surface {
+  return [self.videoHolder handleFrame:surface];
 }
 
 - (void)requestFrames {
-  [videoDecoder generateFrames];
+  [videoDecoder generateBuffers];
 }
 
 - (void)windowWillEnterFullScreen:(NSNotification *)notification {

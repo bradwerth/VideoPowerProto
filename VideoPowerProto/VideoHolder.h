@@ -17,7 +17,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)resetWithModel:(VideoModel* _Nullable)model;
 - (BOOL)wantsMoreFrames;
-- (BOOL)handleDecodedFrame:(CMSampleBufferRef)buffer;
+- (BOOL)handleBuffer:(CMSampleBufferRef)buffer;
+- (BOOL)handleFrame:(IOSurfaceRef)surface;
 @end
 
 NS_ASSUME_NONNULL_END

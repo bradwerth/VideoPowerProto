@@ -19,6 +19,12 @@
   // avLayer is an unretained alias of contentLayer that indicates we're using
   // this type of layer.
   AVSampleBufferDisplayLayer* avLayer;
+  // frameImage is the image content displayed by the contentLayer, if we are
+  // being fed frames directly.
+  CGImageRef frameImage;
+  // frameConversionContext is used to convert surfaces into frame images.
+  CIContext* frameConversionContext;
+  
   VideoModel* lastModel;
   float aspectRatio;
   dispatch_queue_global_t queueToUse;
@@ -31,6 +37,8 @@ const int32_t kStoredBufferMax = 10;
   // act as a layer-backed view.
   contentLayer = nil;
   avLayer = nil;
+  frameImage = nil;
+  frameConversionContext = [[CIContext alloc] init];
   lastModel = nil;
   aspectRatio = 1.0f;
   queueToUse = dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0);
@@ -59,74 +67,6 @@ const int32_t kStoredBufferMax = 10;
   }];
 }
 
-- (BOOL)handleDecodedFrame:(CMSampleBufferRef)buffer {
-  //NSLog(@"handleDecodedFrame buffer is %@.", buffer);
-
-  // Check for interesting buffer attachments.
-  CFTypeRef attachment;
-
-  // Should we post that we've consumed this buffer?
-  if ((attachment = CMGetAttachment(buffer, kCMSampleBufferAttachmentKey_PostNotificationWhenConsumed, NULL))) {
-    //NSLog(@"handleDecodedFrame post notification buffer.");
-    CFNotificationCenterRef center = CFNotificationCenterGetLocalCenter();
-    CFNotificationCenterPostNotification(center, kCMSampleBufferConsumerNotification_BufferConsumed , self, attachment, false);
-  }
-
-  // Is this the last frame from the media?
-  if ((attachment = CMGetAttachment(buffer, kCMSampleBufferAttachmentKey_PermanentEmptyMedia, NULL))) {
-    //NSLog(@"handleDecodedFrame last frame.");
-
-    // Stop requesting frames.
-    [avLayer stopRequestingMediaData];
-
-    // Get the time this frame would be rendered, then loop once we reach that
-    // time.
-    CMTime timeToLoop = CMSampleBufferGetOutputPresentationTimeStamp(buffer);
-    [self restartAtTime:timeToLoop];
-    // No more frames, please.
-    return NO;
-  }
-
-  // Beyond this, we only care about displayable frames.
-  CMFormatDescriptionRef format = CMSampleBufferGetFormatDescription(buffer);
-  BOOL canDisplay = !!format;
-  if (!canDisplay) {
-    // We want more frames.
-    return YES;
-  }
-
-  if (lastModel.layerClass == LayerClassCALayer) {
-    // Extract the image from the buffer.
-    // TODO: the following call always returns nil, making this approach fail.
-    CVImageBufferRef imageBuffer = CMSampleBufferGetImageBuffer(buffer);
-    IOSurfaceRef surface = CVPixelBufferGetIOSurface((CVPixelBufferRef)imageBuffer);
-    if (!surface) {
-      return NO;
-    }
-    contentLayer.contents = (id)surface;
-  } else if (lastModel.layerClass == LayerClassAVSampleBufferDisplayLayer) {
-    assert(avLayer);
-
-    // It's possible that our layer can't handle any more frames.
-    if ([avLayer status] == AVQueuedSampleBufferRenderingStatusFailed) {
-      [self recreateContentLayer];
-      assert(avLayer);
-    }
-
-    if ([avLayer requiresFlushToResumeDecoding]) {
-      [avLayer flush];
-    }
-
-    assert([avLayer isReadyForMoreMediaData]);
-    [avLayer enqueueSampleBuffer:buffer];
-
-    return [avLayer isReadyForMoreMediaData];
-  }
-
-  // We want more frames.
-  return YES;
-}
-
 - (void)resetWithModel:(VideoModel* _Nullable)model {
   // Copy the model to lock in its values, then release the old model.
   VideoModel *oldModel = lastModel;
@@ -148,6 +88,12 @@ const int32_t kStoredBufferMax = 10;
   avLayer = nil;
   self.layer.sublayers = nil;
 
+  // Get rid of any frame we're storing.
+  if (frameImage) {
+    CFRelease(frameImage);
+  }
+  frameImage = nil;
+
   if (!lastModel) {
     return;
   }
@@ -155,6 +101,8 @@ const int32_t kStoredBufferMax = 10;
   if (lastModel.layerClass == LayerClassCALayer) {
     NSLog(@"recreateContentLayer CALayer.");
     contentLayer = [[CALayer layer] retain];
+    contentLayer.delegate = (id)self;
+    contentLayer.needsDisplayOnBoundsChange = YES;
   } else if (lastModel.layerClass == LayerClassAVSampleBufferDisplayLayer) {
     NSLog(@"recreateContentLayer AVSampleBufferDisplayLayer.");
     avLayer = [[AVSampleBufferDisplayLayer layer] retain];
@@ -199,8 +147,14 @@ const int32_t kStoredBufferMax = 10;
       [avLayer requestMediaDataWhenReadyOnQueue:queueToUse usingBlock:^{
         [holder enqueueMoreFrames];
       }];
+    } else {
+      [holder enqueueMoreFrames];
     }
   }];
+}
+
+- (void)enqueueMoreFrames {
+  [self.controller requestFrames];
 }
 
 - (void)centerContentLayer {
@@ -231,8 +185,61 @@ const int32_t kStoredBufferMax = 10;
   return YES;
 }
 
-- (void)enqueueMoreFrames {
-  [self.controller requestFrames];
+- (BOOL)handleBuffer:(CMSampleBufferRef)buffer {
+  assert(lastModel.canHandleBuffers);
+
+  //NSLog(@"handleBuffer buffer is %@.", buffer);
+
+  // Track whether we want more buffers. Generally, we do, but certain buffer
+  // properties and the state of our display layer may change that.
+  BOOL weWantMoreBuffers = YES;
+
+  // Check for interesting buffer attachments.
+  CFTypeRef attachment;
+
+  // Should we post that we've consumed this buffer?
+  if ((attachment = CMGetAttachment(buffer, kCMSampleBufferAttachmentKey_PostNotificationWhenConsumed, NULL))) {
+    //NSLog(@"handleBuffer post notification buffer.");
+    CFNotificationCenterRef center = CFNotificationCenterGetLocalCenter();
+    CFNotificationCenterPostNotification(center, kCMSampleBufferConsumerNotification_BufferConsumed , self, attachment, false);
+  }
+
+  // Is this the last buffer from the media?
+  if ((attachment = CMGetAttachment(buffer, kCMSampleBufferAttachmentKey_PermanentEmptyMedia, NULL))) {
+    //NSLog(@"handleBuffer last frame.");
+
+    // Stop requesting buffers.
+    [avLayer stopRequestingMediaData];
+    weWantMoreBuffers = NO;
+
+    // Get the time the frame(s) from this buffer will be rendered, then loop
+    // once we reach that time.
+    CMTime timeToLoop = CMSampleBufferGetOutputPresentationTimeStamp(buffer);
+    [self restartAtTime:timeToLoop];
+  }
+
+  // Display/decode anything that's displayable.
+  CMFormatDescriptionRef format = CMSampleBufferGetFormatDescription(buffer);
+  BOOL canDisplay = !!format;
+  if (canDisplay) {
+    // It's possible that our layer can't handle any more frames.
+    if ([avLayer status] == AVQueuedSampleBufferRenderingStatusFailed) {
+      [self recreateContentLayer];
+      assert(avLayer);
+    }
+
+    if ([avLayer requiresFlushToResumeDecoding]) {
+      [avLayer flush];
+    }
+
+    assert([avLayer isReadyForMoreMediaData]);
+    [avLayer enqueueSampleBuffer:buffer];
+
+    // Don't ask for more buffers if the layer can't handle them.
+    weWantMoreBuffers &= [avLayer isReadyForMoreMediaData];
+  }
+
+  return weWantMoreBuffers;
 }
 
 - (void)restartAtTime:(CMTime)targetTime {
@@ -279,6 +286,32 @@ const int32_t kStoredBufferMax = 10;
     CMTimebaseSetTimerNextFireTime(avLayer.controlTimebase, loopTimer, targetTime, 0);
     */
   }
+}
+
+- (BOOL)handleFrame:(IOSurfaceRef)surface {
+  CFRetain(surface);
+  if (frameImage) {
+    CFRelease(frameImage);
+  }
+  // Convert the surface into a CGImageRef and store it as our frameImage. We
+  // do this by going through CIImage.
+  CIImage* image = [CIImage imageWithIOSurface:surface];
+  frameImage = [frameConversionContext createCGImage:image fromRect:image.extent];
+
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [contentLayer setNeedsDisplay];
+  });
+  return YES;
+}
+
+- (void)displayLayer:(CALayer*)layer {
+  assert(layer == contentLayer);
+  // Figure out the correct scale to display this frame. Since the layer is
+  // scaled to the aspect ratio of the content, we can just compute this based
+  // on the width of the frame divided by the width of the layer.
+  CGFloat scale = CGImageGetWidth(frameImage) / contentLayer.bounds.size.width;
+  contentLayer.contentsScale = scale;
+  contentLayer.contents = (id)frameImage;
 }
 
 @end

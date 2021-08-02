@@ -16,12 +16,13 @@ NS_ASSUME_NONNULL_BEGIN
 - (IBAction)clickFullscreenButton:(id)sender;
 
 - (BOOL)wantsMoreFrames;
-- (BOOL)handleDecodedFrame:(CMSampleBufferRef)buffer;
+- (BOOL)handleBuffer:(CMSampleBufferRef)buffer;
+- (BOOL)handleFrame:(IOSurfaceRef)surface;
+
 - (void)requestFrames;
 
 - (void)windowWillEnterFullScreen:(NSNotification *)notification;
 - (void)windowWillExitFullScreen:(NSNotification *)notification;
-- (void)windowDidExitFullScreen:(NSNotification *)notification;
 @end
 
 NS_ASSUME_NONNULL_END
