@@ -34,6 +34,10 @@
   return (self.layerClass == LayerClassAVSampleBufferDisplayLayer);
 }
 
+- (BOOL) willRequestFramesRepeatedly {
+  return (self.layerClass == LayerClassAVSampleBufferDisplayLayer);
+}
+
 - (void) waitForVideoAssetFirstTrack: (void (^)(AVAssetTrack*))handler {
   AVAsset* asset = [self videoAsset];
   if (!asset) {

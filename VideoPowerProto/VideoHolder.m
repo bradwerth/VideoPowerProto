@@ -22,6 +22,7 @@
   // frameImage is the image content displayed by the contentLayer, if we are
   // being fed frames directly.
   CGImageRef frameImage;
+  NSLock* frameImageLock;
   // frameConversionContext is used to convert surfaces into frame images.
   CIContext* frameConversionContext;
   
@@ -38,6 +39,7 @@ const int32_t kStoredBufferMax = 10;
   contentLayer = nil;
   avLayer = nil;
   frameImage = nil;
+  frameImageLock = [[NSLock alloc] init];
   frameConversionContext = [[CIContext alloc] init];
   lastModel = nil;
   aspectRatio = 1.0f;
@@ -88,11 +90,12 @@ const int32_t kStoredBufferMax = 10;
   avLayer = nil;
   self.layer.sublayers = nil;
 
-  // Get rid of any frame we're storing.
+  [frameImageLock lock];
   if (frameImage) {
     CFRelease(frameImage);
   }
   frameImage = nil;
+  [frameImageLock unlock];
 
   if (!lastModel) {
     return;
@@ -143,7 +146,7 @@ const int32_t kStoredBufferMax = 10;
     });
 
     // Start requesting frames.
-    if (avLayer) {
+    if (avLayer && lastModel.willRequestFramesRepeatedly) {
       [avLayer requestMediaDataWhenReadyOnQueue:queueToUse usingBlock:^{
         [holder enqueueMoreFrames];
       }];
@@ -208,8 +211,10 @@ const int32_t kStoredBufferMax = 10;
   if ((attachment = CMGetAttachment(buffer, kCMSampleBufferAttachmentKey_PermanentEmptyMedia, NULL))) {
     //NSLog(@"handleBuffer last frame.");
 
-    // Stop requesting buffers.
-    [avLayer stopRequestingMediaData];
+    if (avLayer && lastModel.willRequestFramesRepeatedly) {
+      // Stop requesting buffers.
+      [avLayer stopRequestingMediaData];
+    }
     weWantMoreBuffers = NO;
 
     // Get the time the frame(s) from this buffer will be rendered, then loop
@@ -248,10 +253,12 @@ const int32_t kStoredBufferMax = 10;
     void (^loopBlock)(CFRunLoopTimerRef) = ^(CFRunLoopTimerRef timer) {
       [avLayer flush];
       CMTimebaseSetTime(avLayer.controlTimebase, CMTimeMake(0, 1));
-      VideoHolder* holder = self;
-      [avLayer requestMediaDataWhenReadyOnQueue:queueToUse usingBlock:^{
-        [holder enqueueMoreFrames];
-      }];
+      if (lastModel.willRequestFramesRepeatedly) {
+        VideoHolder* holder = self;
+        [avLayer requestMediaDataWhenReadyOnQueue:queueToUse usingBlock:^{
+          [holder enqueueMoreFrames];
+        }];
+      }
     };
 
     // Setup a timer to trigger at time.
@@ -289,29 +296,51 @@ const int32_t kStoredBufferMax = 10;
 }
 
 - (BOOL)handleFrame:(IOSurfaceRef)surface {
-  CFRetain(surface);
-  if (frameImage) {
-    CFRelease(frameImage);
-  }
+  // We might have a stale frameImage. If we do, capture it and release it
+  // after we have updated frameImage.
+  [frameImageLock lock];
+  CGImageRef staleFrameImage = frameImage;
+
   // Convert the surface into a CGImageRef and store it as our frameImage. We
   // do this by going through CIImage.
   CIImage* image = [CIImage imageWithIOSurface:surface];
   frameImage = [frameConversionContext createCGImage:image fromRect:image.extent];
+  [frameImageLock unlock];
 
+  if (staleFrameImage) {
+    CFRelease(staleFrameImage);
+  }
+
+  CALayer* currentContentLayer = [contentLayer retain];
   dispatch_async(dispatch_get_main_queue(), ^{
-    [contentLayer setNeedsDisplay];
+    if ([currentContentLayer superlayer]) {
+      [currentContentLayer setNeedsDisplay];
+    }
+    [currentContentLayer release];
   });
   return YES;
 }
 
 - (void)displayLayer:(CALayer*)layer {
-  assert(layer == contentLayer);
-  // Figure out the correct scale to display this frame. Since the layer is
-  // scaled to the aspect ratio of the content, we can just compute this based
-  // on the width of the frame divided by the width of the layer.
-  CGFloat scale = CGImageGetWidth(frameImage) / contentLayer.bounds.size.width;
-  contentLayer.contentsScale = scale;
-  contentLayer.contents = (id)frameImage;
+  // If this is stale, early exit.
+  if (layer != contentLayer) {
+    return;
+  }
+
+  [frameImageLock lock];
+  if (frameImage) {
+    // Figure out the correct scale to display this frame. Since the layer is
+    // scaled to the aspect ratio of the content, we can just compute this based
+    // on the width of the frame divided by the width of the layer.
+    CGFloat scale = CGImageGetWidth(frameImage) / layer.bounds.size.width;
+    layer.contentsScale = scale;
+    layer.contents = (id)frameImage;
+
+    // We don't need to hold onto frameImage any longer.
+    CFRelease(frameImage);
+    frameImage = nil;
+  }
+  [frameImageLock unlock];
 }
 
 @end

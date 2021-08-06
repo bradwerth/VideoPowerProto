@@ -47,6 +47,7 @@ typedef NS_OPTIONS(NSInteger, PixelBuffer) {
 @property (nonatomic, readonly) AVAsset* videoAsset;
 
 @property (nonatomic, readonly) BOOL canHandleBuffers;
+@property (nonatomic, readonly) BOOL willRequestFramesRepeatedly;
 
 - (void) waitForVideoAssetFirstTrack: (void (^)(AVAssetTrack*))handler;
 
