@@ -12,6 +12,7 @@ NS_ASSUME_NONNULL_BEGIN
 @interface MainViewController : NSViewController
 - (IBAction)selectLayerClass:(id)sender;
 - (IBAction)selectBuffering:(id)sender;
+- (IBAction)selectFormat:(id)sender;
 - (IBAction)clickPixelBufferButton:(id)sender;
 - (IBAction)clickFullscreenButton:(id)sender;
 

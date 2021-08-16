@@ -18,8 +18,6 @@ This popup determines how the decoded samples are processed before they are disp
 The Core Animation API allows a `CVPixelBuffer` to be [annotated with attributes](https://developer.apple.com/documentation/corevideo/cvpixelbuffer/pixel_buffer_attribute_keys?language=objc) that affect how the buffers are processed by other API calls.
 
 ## Future Work
-* Actually playback looping video in the `VideoHolder`.
 * Embed videos of different codecs as assets into the project; add a popup menu to select amongst them.
 * Add label to display details of the currently playing video.
-* Add fullscreen button and mute toggle button.
 * Add more pixel buffer attribute options.

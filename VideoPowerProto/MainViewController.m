@@ -18,6 +18,7 @@
 
 @property (strong) IBOutlet NSPopUpButton* layerClassPopUp;
 @property (strong) IBOutlet NSPopUpButton* bufferingPopUp;
+@property (strong) IBOutlet NSPopUpButton* formatPopUp;
 @property (strong) IBOutlet NSButton* pixelBufferOpenGLCompatibilityButton;
 @property (strong) IBOutlet NSButton* pixelBufferIOSurfaceCoreAnimationCompatibilityButton;
 
@@ -43,6 +44,7 @@
   // Listen to all the properties that might change in our model.
   [self.videoModel addObserver:self forKeyPath:@"layerClass" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"buffering" options:0 context:nil];
+  [self.videoModel addObserver:self forKeyPath:@"format" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"pixelBuffer" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"videoFilename" options:0 context:nil];
 
@@ -53,6 +55,7 @@
 - (void)dealloc {
   [_layerClassPopUp release];
   [_bufferingPopUp release];
+  [_formatPopUp release];
   [_pixelBufferOpenGLCompatibilityButton release];
   [_pixelBufferIOSurfaceCoreAnimationCompatibilityButton release];
   [_videoHolder release];
@@ -63,6 +66,7 @@
   [videoDecoder release];
   [self.videoModel removeObserver:self forKeyPath:@"layerClass"];
   [self.videoModel removeObserver:self forKeyPath:@"buffering"];
+  [self.videoModel removeObserver:self forKeyPath:@"format"];
   [self.videoModel removeObserver:self forKeyPath:@"pixelBuffer"];
   [self.videoModel removeObserver:self forKeyPath:@"videoFilename"];
   [super dealloc];
@@ -74,6 +78,10 @@
 
 - (IBAction)selectBuffering:(NSPopUpButton*)sender {
   self.videoModel.buffering = sender.selectedTag;
+}
+
+- (IBAction)selectFormat:(NSPopUpButton*)sender {
+  self.videoModel.format = sender.selectedTag;
 }
 
 - (IBAction)clickPixelBufferButton:(NSButton*)sender {

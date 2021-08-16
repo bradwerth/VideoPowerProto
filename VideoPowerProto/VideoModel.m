@@ -12,8 +12,9 @@
 
 - (nonnull id)copyWithZone:(nullable NSZone*)zone {
   VideoModel* model = [[VideoModel alloc] init];
-  model.buffering = self.buffering;
   model.layerClass = self.layerClass;
+  model.buffering = self.buffering;
+  model.format = self.format;
   model.pixelBuffer = self.pixelBuffer;
   return model;
 }

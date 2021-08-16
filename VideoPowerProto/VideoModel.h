@@ -23,6 +23,14 @@ typedef NS_ENUM(NSInteger, Buffering) {
 };
 
 // Keep these values synced with the Tags used in the xib.
+typedef NS_ENUM(NSInteger, Format) {
+  FormatUnspecified,
+  Format422YpCbCr8,
+  Format420YpCbCr8BiPlanarVideo,
+  Format420YpCbCr8BiPlanarFullRange,
+};
+
+// Keep these values synced with the Tags used in the xib.
 typedef NS_OPTIONS(NSInteger, PixelBuffer) {
   OpenGL = 1 << 0,
   IOSurfaceCoreAnimation = 1 << 1,
@@ -33,6 +41,7 @@ typedef NS_OPTIONS(NSInteger, PixelBuffer) {
 // These properties should be copied in the implementation of copyWithZone.
 @property LayerClass layerClass;
 @property Buffering buffering;
+@property Format format;
 @property PixelBuffer pixelBuffer;
 
 - (nonnull id)copyWithZone:(nullable NSZone*)zone;
