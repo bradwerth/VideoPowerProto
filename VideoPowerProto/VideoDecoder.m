@@ -50,21 +50,21 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   frameImages = nil;
   frameTimestamps = nil;
 
-  // Create our frame timer, and start it up.
+  // Create our frame timer, and start it up in a suspended state.
   frameTimerActive = NO;
   frameTimerQueue = dispatch_get_global_queue(QOS_CLASS_USER_INTERACTIVE, 0);
   frameTimerSource = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, frameTimerQueue);
   dispatch_source_set_timer(frameTimerSource, DISPATCH_TIME_NOW, FRAME_INTERVAL_NS, FRAME_INTERVAL_LEEWAY_NS);
   dispatch_set_context(frameTimerSource, self);
   dispatch_source_set_event_handler_f(frameTimerSource, frameTimerCallback);
-  dispatch_resume(frameTimerSource);
-
+  
   return self;
 }
 
 - (void)dealloc {
   // Get rid of any existing decoding.
   [self stopDecode];
+  dispatch_resume(frameTimerSource);
   dispatch_release(frameTimerSource);
   dispatch_release(frameTimerQueue);
   [super dealloc];
@@ -73,6 +73,9 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
 - (void)stopDecode {
   [self stopDecompressor];
 
+  if (frameTimerActive) {
+    dispatch_suspend(frameTimerSource);
+  }
   frameTimerActive = NO;
 
   if (frameImages) {
@@ -177,6 +180,8 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   OSStatus error = VTDecompressionSessionCreate(kCFAllocatorDefault, format, NULL, NULL, &callback, &decompressor);
   if (!decompressor) {
     NSLog(@"Failed to create decompression session with error %d.", error);
+    block(NO);
+    return;
   }
   assert(error == noErr);
   CFRetain(decompressor);
@@ -186,6 +191,7 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   frameTimestamps = CFArrayCreateMutable(kCFAllocatorDefault, MAX_FRAMES_TO_HOLD, &kCFTypeArrayCallBacks);
 
   frameTimerActive = YES;
+  dispatch_resume(frameTimerSource);
 
   block(YES);
 }
@@ -206,7 +212,7 @@ void DecompressorCallback(void *decompressionOutputRefCon, void *sourceFrameRefC
   CFArrayAppendValue(frameTimestamps, playbackDate);
   CFRelease(playbackDate);
 
-  NSLog(@"storeImage: stuffing frame at %f and now there are %ld/%ld frames.", playbackTime, (long)CFArrayGetCount(frameTimestamps), (long)MAX_FRAMES_TO_HOLD);
+  //NSLog(@"storeImage: stuffing frame at %f and now there are %ld/%ld frames.", playbackTime, (long)CFArrayGetCount(frameTimestamps), (long)MAX_FRAMES_TO_HOLD);
 }
 
 void frameTimerCallback(void* context) {
@@ -215,9 +221,7 @@ void frameTimerCallback(void* context) {
 }
 
 - (void)processFrameImages {
-  if (!frameTimerActive) {
-    return;
-  }
+  assert(frameTimerActive);
 
   // This is called concurrently, so ensure that the structures we need are
   // retained for the duration of the call.
@@ -247,7 +251,7 @@ void frameTimerCallback(void* context) {
   if (frameCount > MAX_FRAMES_TO_HOLD) {
     // Dump oldest frames to bring us back down to the maximum.
     CFIndex lastStaleFrame = (frameCount - MAX_FRAMES_TO_HOLD) - 1;
-    NSLog(@"frameTimerCallback dumping %ld stale frames.", (long)(lastStaleFrame + 1));
+    //NSLog(@"frameTimerCallback dumping %ld stale frames.", (long)(lastStaleFrame + 1));
     CFArrayReplaceValues(images, CFRangeMake(0, lastStaleFrame), NULL, 0);
     CFArrayReplaceValues(timestamps, CFRangeMake(0, lastStaleFrame), NULL, 0);
     frameCount = MAX_FRAMES_TO_HOLD;
@@ -336,7 +340,7 @@ void frameTimerCallback(void* context) {
       seconds = 0.1;
     }
 
-    NSLog(@"generateBuffers: rescheduling in %0.2f seconds.", seconds);
+    //NSLog(@"generateBuffers: rescheduling in %0.2f seconds.", seconds);
 
     // Schedule the block to be called in bufferTimeSeen from now.
     CFAbsoluteTime absoluteNow = CFAbsoluteTimeGetCurrent();
@@ -377,11 +381,6 @@ void frameTimerCallback(void* context) {
             wantsMoreFrames = [controller handleBuffer:buffer];
           } else {
             wantsMoreFrames = [self decompressBufferIntoFrames:buffer];
-            /*
-            if (!wantsMoreFrames) {
-              NSLog(@"turnBuffersIntoFrames frames are full.");
-            }
-            */
             bufferTimeSeen = CMTimeAdd(bufferTimeSeen, CMSampleBufferGetDuration(buffer));
             if (CMTimeGetSeconds(bufferTimeSeen) >= SECONDS_OF_FRAMES_TO_BUFFER) {
               //NSLog(@"turnBuffersIntoFrames exiting because we saw %f seconds of buffers.", CMTimeGetSeconds(bufferTimeSeen));

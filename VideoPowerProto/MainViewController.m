@@ -51,6 +51,12 @@
 }
 
 - (void)dealloc {
+  [_layerClassPopUp release];
+  [_bufferingPopUp release];
+  [_pixelBufferOpenGLCompatibilityButton release];
+  [_pixelBufferIOSurfaceCoreAnimationCompatibilityButton release];
+  [_videoHolder release];
+
   [oldWindow release];
   [oldContentView release];
   [oldVideoHolderSuperview release];
@@ -73,7 +79,7 @@
 - (IBAction)clickPixelBufferButton:(NSButton*)sender {
   bool isOn = (sender.state == NSControlStateValueOn);
   PixelBuffer oldValue = [self videoModel].pixelBuffer;
-  self.videoModel.pixelBuffer = (isOn ? (oldValue |= sender.tag) : (oldValue &= ~sender.tag));
+  self.videoModel.pixelBuffer = (isOn ? (oldValue | sender.tag) : (oldValue & ~sender.tag));
 }
 
 - (IBAction)clickFullscreenButton:(NSButton*)sender {

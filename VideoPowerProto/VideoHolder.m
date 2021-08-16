@@ -208,7 +208,7 @@ const int32_t kStoredBufferMax = 10;
   }
 
   // Is this the last buffer from the media?
-  if ((attachment = CMGetAttachment(buffer, kCMSampleBufferAttachmentKey_PermanentEmptyMedia, NULL))) {
+  if (CMGetAttachment(buffer, kCMSampleBufferAttachmentKey_PermanentEmptyMedia, NULL)) {
     //NSLog(@"handleBuffer last frame.");
 
     if (avLayer && lastModel.willRequestFramesRepeatedly) {

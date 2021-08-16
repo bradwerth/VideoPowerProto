@@ -19,7 +19,7 @@
 }
 
 - (NSString*) videoFilename {
-  return @"HDRMovie.mov";
+  return @"HDRMovie2.mp4";
 }
 
 - (AVAsset*) videoAsset {

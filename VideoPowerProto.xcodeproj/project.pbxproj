@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A2228FA526CAC21500E439CA /* HDRMovie2.mp4 in Resources */ = {isa = PBXBuildFile; fileRef = A2228FA326CAC21500E439CA /* HDRMovie2.mp4 */; };
+		A2228FA626CAC21500E439CA /* HDRMovie1.mov in Resources */ = {isa = PBXBuildFile; fileRef = A2228FA426CAC21500E439CA /* HDRMovie1.mov */; };
 		A258AE8726702F0200DA4405 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A258AE8626702F0200DA4405 /* AppDelegate.m */; };
 		A258AE8926702F0400DA4405 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A258AE8826702F0400DA4405 /* Assets.xcassets */; };
 		A258AE8C26702F0400DA4405 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = A258AE8A26702F0400DA4405 /* MainMenu.xib */; };
@@ -21,6 +23,8 @@
 
 /* Begin PBXFileReference section */
 		A2035C482677C72100683251 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		A2228FA326CAC21500E439CA /* HDRMovie2.mp4 */ = {isa = PBXFileReference; lastKnownFileType = file; path = HDRMovie2.mp4; sourceTree = "<group>"; };
+		A2228FA426CAC21500E439CA /* HDRMovie1.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = HDRMovie1.mov; sourceTree = "<group>"; };
 		A258AE8226702F0200DA4405 /* VideoPowerProto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VideoPowerProto.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A258AE8526702F0200DA4405 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		A258AE8626702F0200DA4405 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -36,7 +40,6 @@
 		A268CC802672C9B0006A180E /* VideoModel.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VideoModel.h; sourceTree = "<group>"; };
 		A268CC812672C9B0006A180E /* VideoModel.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VideoModel.m; sourceTree = "<group>"; };
 		A2EACA2F267BD792006FD153 /* Media */ = {isa = PBXFileReference; lastKnownFileType = folder; path = Media; sourceTree = "<group>"; };
-		A2F26BC72677EF3800F4939F /* HDRMovie.mov */ = {isa = PBXFileReference; lastKnownFileType = video.quicktime; path = HDRMovie.mov; sourceTree = "<group>"; };
 		A2F26BC926796A7500F4939F /* VideoDecoder.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = VideoDecoder.h; sourceTree = "<group>"; };
 		A2F26BCA26796A7500F4939F /* VideoDecoder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = VideoDecoder.m; sourceTree = "<group>"; };
 		A2FF896226B487C900E0B4E4 /* ColoredBackgroundView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ColoredBackgroundView.h; sourceTree = "<group>"; };
@@ -100,7 +103,8 @@
 		A2F26BC62677EECE00F4939F /* Media */ = {
 			isa = PBXGroup;
 			children = (
-				A2F26BC72677EF3800F4939F /* HDRMovie.mov */,
+				A2228FA426CAC21500E439CA /* HDRMovie1.mov */,
+				A2228FA326CAC21500E439CA /* HDRMovie2.mp4 */,
 			);
 			path = Media;
 			sourceTree = "<group>";
@@ -161,6 +165,8 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A2228FA526CAC21500E439CA /* HDRMovie2.mp4 in Resources */,
+				A2228FA626CAC21500E439CA /* HDRMovie1.mov in Resources */,
 				A2EACA30267BD792006FD153 /* Media in Resources */,
 				A258AE8926702F0400DA4405 /* Assets.xcassets in Resources */,
 				A258AE8C26702F0400DA4405 /* MainMenu.xib in Resources */,
