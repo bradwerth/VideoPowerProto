@@ -318,15 +318,15 @@ void frameTimerCallback(void* context) {
   assetOutput = nil;
 
   NSError* error = nil;
-  assetReader = [[AVAssetReader alloc] initWithAsset:asset error:&error];
-  if (assetReader == nil) {
+  AVAssetReader* reader = [[AVAssetReader alloc] initWithAsset:asset error:&error];
+  if (reader == nil) {
     NSLog(@"AssetReader creation failed with error: %@.", error);
     return NO;
   }
 
   NSDictionary<NSString*, id>* dict = [NSMutableDictionary<NSString*, id> dictionary];
 
-  // Always specify IOSurface key. Using a black dictionary lets the OS decide
+  // Always specify IOSurface key. Using a blank dictionary lets the OS decide
   // the best way to allocate IOSurfaces.
   [dict setValue:[NSDictionary dictionary] forKey:(__bridge NSString*)kCVPixelBufferIOSurfacePropertiesKey];
 
@@ -351,10 +351,13 @@ void frameTimerCallback(void* context) {
     [dict setValue:pixelFormatNumber forKey:(__bridge NSString*)kCVPixelBufferPixelFormatTypeKey];
   }
 
-  assetOutput = [[AVAssetReaderTrackOutput alloc] initWithTrack:firstVideoTrack outputSettings:dict];
-  assetOutput.alwaysCopiesSampleData = NO;
-  [assetReader addOutput:assetOutput];
-  [assetReader startReading];
+  AVAssetReaderTrackOutput* output = [[AVAssetReaderTrackOutput alloc] initWithTrack:firstVideoTrack outputSettings:dict];
+  output.alwaysCopiesSampleData = NO;
+  [reader addOutput:output];
+  [reader startReading];
+
+  assetReader = reader;
+  assetOutput = output;
   return YES;
 }
 

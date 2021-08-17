@@ -102,12 +102,12 @@ const int32_t kStoredBufferMax = 10;
   }
 
   if (lastModel.layerClass == LayerClassCALayer) {
-    NSLog(@"recreateContentLayer CALayer.");
+    //NSLog(@"recreateContentLayer CALayer.");
     contentLayer = [[CALayer layer] retain];
     contentLayer.delegate = (id)self;
     contentLayer.needsDisplayOnBoundsChange = YES;
   } else if (lastModel.layerClass == LayerClassAVSampleBufferDisplayLayer) {
-    NSLog(@"recreateContentLayer AVSampleBufferDisplayLayer.");
+    //NSLog(@"recreateContentLayer AVSampleBufferDisplayLayer.");
     avLayer = [[AVSampleBufferDisplayLayer layer] retain];
     CMTimebaseRef timebase;
     CMTimebaseCreateWithMasterClock(kCFAllocatorDefault, CMClockGetHostTimeClock(), &timebase);
@@ -240,7 +240,6 @@ const int32_t kStoredBufferMax = 10;
       [avLayer flush];
     }
 
-    assert([avLayer isReadyForMoreMediaData]);
     [avLayer enqueueSampleBuffer:buffer];
 
     // Don't ask for more buffers if the layer can't handle them.
