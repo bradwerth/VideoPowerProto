@@ -14,8 +14,7 @@
 
 @implementation VideoDecoder {
   MainViewController* controller;
-  BOOL canHandleBuffers;
-  BOOL willRequestFramesRepeatedly;
+  VideoModel* lastModel;
   AVAsset* asset;
   AVAssetTrack* firstVideoTrack;
   AVAssetReader* assetReader;
@@ -39,8 +38,7 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
 - (instancetype)initWithController:(MainViewController *)inController {
   self = [super init];
   controller = inController;
-  canHandleBuffers = NO;
-  willRequestFramesRepeatedly = NO;
+  lastModel = nil;
   asset = nil;
   firstVideoTrack = nil;
   assetReader = nil;
@@ -64,6 +62,13 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
 - (void)dealloc {
   // Get rid of any existing decoding.
   [self stopDecode];
+
+  [lastModel release];
+  lastModel = nil;
+
+  [asset release];
+  asset = nil;
+
   dispatch_resume(frameTimerSource);
   dispatch_release(frameTimerSource);
   dispatch_release(frameTimerQueue);
@@ -99,19 +104,23 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
 
   [firstVideoTrack release];
   firstVideoTrack = nil;
-
-  [asset release];
-  asset = nil;
 }
 
 - (void)resetWithModel:(nullable VideoModel*)model completionHandler:(void (^)(BOOL))block {
   // Get rid of any existing decoding.
   [self stopDecode];
 
-  canHandleBuffers = model.canHandleBuffers;
-  willRequestFramesRepeatedly = model.willRequestFramesRepeatedly;
+  // Copy the model to lock in its values, then release the old model.
+  VideoModel *oldModel = lastModel;
+  lastModel = [model copy];
+  [oldModel release];
 
-  asset = [[model videoAsset] retain];
+  if (!lastModel) {
+    block(NO);
+    return;
+  }
+
+  asset = [[lastModel videoAsset] retain];
   if (asset) {
     // Load the tracks asynchronously, and then process them.
     VideoDecoder* decoder = self;
@@ -125,6 +134,9 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
 }
 
 - (void)handleTracksWithCompletionHandler:(void (^)(BOOL))block {
+  assert(lastModel);
+  assert(asset);
+
   NSError* error = nil;
   AVKeyValueStatus status = [asset statusOfValueForKey:@"tracks" error:&error];
   if (status == AVKeyValueStatusFailed) {
@@ -148,7 +160,7 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     block(readSuccess);
   };
 
-  BOOL needToDecompressBuffers = !canHandleBuffers;
+  BOOL needToDecompressBuffers = !lastModel.canHandleBuffers;
   if (needToDecompressBuffers) {
     // Load the formatDescriptions asynchronously, and then process them.
     VideoDecoder* decoder = self;
@@ -285,9 +297,10 @@ void frameTimerCallback(void* context) {
 }
 
 - (BOOL)readAssetFromBeginning {
+  assert(lastModel);
   assert(firstVideoTrack);
 
-  if (!canHandleBuffers) {
+  if (!lastModel.canHandleBuffers) {
     // Reset our timeAtStart.
     timeAtStart = CFAbsoluteTimeGetCurrent();
 
@@ -311,7 +324,34 @@ void frameTimerCallback(void* context) {
     return NO;
   }
 
-  assetOutput = [[AVAssetReaderTrackOutput alloc] initWithTrack:firstVideoTrack outputSettings:nil];
+  NSDictionary<NSString*, id>* dict = [NSMutableDictionary<NSString*, id> dictionary];
+
+  // Always specify IOSurface key. Using a black dictionary lets the OS decide
+  // the best way to allocate IOSurfaces.
+  [dict setValue:[NSDictionary dictionary] forKey:(__bridge NSString*)kCVPixelBufferIOSurfacePropertiesKey];
+
+  // Handle pixel format keys.
+  OSType pixelFormat;
+  switch (lastModel.format) {
+    case FormatUnspecified:
+      pixelFormat = 0;
+      break;
+    case Format422YpCbCr8:
+      pixelFormat = kCVPixelFormatType_422YpCbCr8;
+      break;
+    case Format420YpCbCr8BiPlanarVideoRange:
+      pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
+      break;
+    case Format420YpCbCr8BiPlanarFullRange:
+      pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange;
+      break;
+  }
+  NSNumber* pixelFormatNumber = [NSNumber numberWithInt:pixelFormat];
+  if (pixelFormat != 0) {
+    [dict setValue:pixelFormatNumber forKey:(__bridge NSString*)kCVPixelBufferPixelFormatTypeKey];
+  }
+
+  assetOutput = [[AVAssetReaderTrackOutput alloc] initWithTrack:firstVideoTrack outputSettings:dict];
   assetOutput.alwaysCopiesSampleData = NO;
   [assetReader addOutput:assetOutput];
   [assetReader startReading];
@@ -319,8 +359,9 @@ void frameTimerCallback(void* context) {
 }
 
 - (void)generateBuffers {
+  assert(lastModel);
   CMTime bufferTimeSeen = [self turnBuffersIntoFrames];
-  if (!willRequestFramesRepeatedly) {
+  if (!lastModel.willRequestFramesRepeatedly) {
     // If we won't be called repeatedly, then re-schedule ourself to be called
     // again just before the buffers we decoded run out. But how soon? It
     // depends on how full is our frame array.
@@ -358,6 +399,8 @@ void frameTimerCallback(void* context) {
 }
 
 - (CMTime)turnBuffersIntoFrames {
+  assert(lastModel);
+
   // This function is called from other threads, and has to be sensitive to
   // our asset structures being released during the call.
   @autoreleasepool {
@@ -377,7 +420,7 @@ void frameTimerCallback(void* context) {
       while (status == AVAssetReaderStatusReading) {
         CMSampleBufferRef buffer = [output copyNextSampleBuffer];
         if (buffer) {
-          if (canHandleBuffers) {
+          if (lastModel.canHandleBuffers) {
             wantsMoreFrames = [controller handleBuffer:buffer];
           } else {
             wantsMoreFrames = [self decompressBufferIntoFrames:buffer];

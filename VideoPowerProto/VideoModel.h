@@ -26,7 +26,7 @@ typedef NS_ENUM(NSInteger, Buffering) {
 typedef NS_ENUM(NSInteger, Format) {
   FormatUnspecified,
   Format422YpCbCr8,
-  Format420YpCbCr8BiPlanarVideo,
+  Format420YpCbCr8BiPlanarVideoRange,
   Format420YpCbCr8BiPlanarFullRange,
 };
 
