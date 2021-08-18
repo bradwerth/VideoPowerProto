@@ -9,6 +9,7 @@
 #import <VideoToolbox/VideoToolbox.h>
 
 #import "VideoDecoder.h"
+#import "AutoreleasedLock.h"
 #import "MainViewController.h"
 #import "VideoModel.h"
 
@@ -95,7 +96,8 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   }
   frameTimestamps = nil;
 
-  [assetStructuresLock lock];
+  [AutoreleasedLock lock:assetStructuresLock];
+
   if (assetReader) {
     [assetReader cancelReading];
   }
@@ -107,7 +109,6 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
 
   [firstVideoTrack release];
   firstVideoTrack = nil;
-  [assetStructuresLock unlock];
 }
 
 - (void)resetWithModel:(nullable VideoModel*)model completionHandler:(void (^)(BOOL))block {
@@ -124,7 +125,8 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     return;
   }
 
-  [assetStructuresLock lock];
+  [AutoreleasedLock lock:assetStructuresLock];
+
   asset = [[lastModel videoAsset] retain];
   if (asset) {
     // Load the tracks asynchronously, and then process them.
@@ -136,22 +138,19 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     // Call the block.
     block(NO);
   }
-  [assetStructuresLock unlock];
 }
 
 - (void)handleTracksWithCompletionHandler:(void (^)(BOOL))block {
   assert(lastModel);
   assert(asset);
 
-  // This lock would be much more convenient in a scoped object.
-  [assetStructuresLock lock];
+  [AutoreleasedLock lock:assetStructuresLock];
 
   NSError* error = nil;
   AVKeyValueStatus status = [asset statusOfValueForKey:@"tracks" error:&error];
   if (status == AVKeyValueStatusFailed) {
     NSLog(@"Track loading failed with: %@.", error);
     block(NO);
-    [assetStructuresLock unlock];
     return;
   }
 
@@ -160,7 +159,6 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   if (!firstVideoTrack) {
     NSLog(@"No video track.");
     block(NO);
-    [assetStructuresLock unlock];
     return;
   }
 
@@ -178,24 +176,22 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     [firstVideoTrack loadValuesAsynchronouslyForKeys:@[@"formatDescriptions"] completionHandler:^{
       [decoder handleFormatsWithCompletionHandler:readBlock];
     }];
-    [assetStructuresLock unlock];
     return;
   }
 
   // We don't need to setup our decompressor, so call our readBlock directly.
   readBlock(YES);
-  [assetStructuresLock unlock];
 }
 
 - (void)handleFormatsWithCompletionHandler:(void (^)(BOOL))block {
-  [assetStructuresLock lock];
-
   assert(firstVideoTrack);
+
+  [AutoreleasedLock lock:assetStructuresLock];
+
   NSUInteger formatCount = firstVideoTrack.formatDescriptions.count;
   if (formatCount == 0) {
     NSLog(@"No format description in first video track.");
     block(NO);
-    [assetStructuresLock unlock];
     return;
   }
 
@@ -206,8 +202,6 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   CMFormatDescriptionRef format = (__bridge CMFormatDescriptionRef)firstVideoTrack.formatDescriptions[0];
   VTDecompressionOutputCallbackRecord callback = {DecompressorCallback, self};
   OSStatus error = VTDecompressionSessionCreate(kCFAllocatorDefault, format, NULL, NULL, &callback, &decompressor);
-
-  [assetStructuresLock unlock];
 
   if (!decompressor) {
     NSLog(@"Failed to create decompression session with error %d.", error);
@@ -327,8 +321,7 @@ void frameTimerCallback(void* context) {
     // displayed.
   }
 
-  // This lock would be more convenient wrapped in a scoped object.
-  [assetStructuresLock lock];
+  [AutoreleasedLock lock:assetStructuresLock];
 
   if (assetReader) {
     [assetReader cancelReading];
@@ -343,7 +336,6 @@ void frameTimerCallback(void* context) {
   assetReader = [[AVAssetReader alloc] initWithAsset:asset error:&error];
   if (assetReader == nil) {
     NSLog(@"AssetReader creation failed with error: %@.", error);
-    [assetStructuresLock unlock];
     return NO;
   }
 
@@ -379,7 +371,6 @@ void frameTimerCallback(void* context) {
   [assetReader addOutput:assetOutput];
   [assetReader startReading];
 
-  [assetStructuresLock unlock];
   return YES;
 }
 
@@ -427,15 +418,9 @@ void frameTimerCallback(void* context) {
   assert(lastModel);
   CMTime bufferTimeSeen = CMTimeMake(0, 1);
 
-  // We're doing something really messy here. We need to hold the
-  // assetStructuresLock throughout this function, but it has *many* exit
-  // points. Ideally, we'd create a scoped structure to hold that lock, and let
-  // the compiler take care of it, but for now we're just going to be really
-  // careful and always unlock before we return.
-  [assetStructuresLock lock];
+  [AutoreleasedLock lock:assetStructuresLock];
 
   if (!assetReader || !assetOutput) {
-    [assetStructuresLock unlock];
     return bufferTimeSeen;
   }
 
@@ -473,11 +458,9 @@ void frameTimerCallback(void* context) {
 
         BOOL didReset = [self readAssetFromBeginning];
         if (!didReset) {
-          [assetStructuresLock unlock];
           return bufferTimeSeen;
         }
         if (!assetReader || !assetOutput) {
-          [assetStructuresLock unlock];
           return bufferTimeSeen;
         }
         break;
@@ -486,7 +469,6 @@ void frameTimerCallback(void* context) {
       case AVAssetReaderStatusCancelled:
       case AVAssetReaderStatusUnknown:
         // That's enough for now. Our controller can try again.
-        [assetStructuresLock unlock];
         return bufferTimeSeen;
       default:
         // The only reason we should reach this is if we are still reading and
@@ -496,7 +478,6 @@ void frameTimerCallback(void* context) {
         break;
     };
   }
-  [assetStructuresLock unlock];
   return bufferTimeSeen;
 }
 
@@ -509,7 +490,9 @@ void frameTimerCallback(void* context) {
 }
 
 - (BOOL)decompressBufferIntoFrames:(CMSampleBufferRef)buffer {
-  assert(decompressor);
+  if (!decompressor) {
+    return NO;
+  }
 
   // Only attempt to decode buffers with sample data.
   CMItemCount sampleCount = CMSampleBufferGetNumSamples(buffer);

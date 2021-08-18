@@ -19,12 +19,16 @@
   [super dealloc];
 }
 
-- (void)applicationDidFinishLaunching:(NSNotification *)aNotification {
-  // Insert code here to initialize your application
+- (void)applicationDidBecomeActive:(NSNotification *)notification {
+  if (self.window.contentView.inFullScreenMode) {
+    [NSCursor hide];
+  }
 }
 
-- (void)applicationWillTerminate:(NSNotification *)aNotification {
-  // Insert code here to tear down your application
+- (void)applicationWillResignActive:(NSNotification *)notification {
+  if (self.window.contentView.inFullScreenMode) {
+    [NSCursor unhide];
+  }
 }
 
 @end

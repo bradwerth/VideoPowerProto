@@ -16,6 +16,10 @@ NS_ASSUME_NONNULL_BEGIN
 @property (weak) IBOutlet MainViewController* controller;
 
 - (void)resetWithModel:(VideoModel* _Nullable)model;
+
+- (CALayer*)detachContentLayer;
+- (void)reattachContentLayer;
+
 - (BOOL)wantsMoreFrames;
 - (BOOL)handleBuffer:(CMSampleBufferRef)buffer;
 - (BOOL)handleFrame:(IOSurfaceRef)surface;

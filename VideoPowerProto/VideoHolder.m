@@ -161,6 +161,16 @@ const int32_t kStoredBufferMax = 10;
   }];
 }
 
+- (CALayer*)detachContentLayer {
+  self.layer.sublayers = nil;
+  return contentLayer;
+}
+
+- (void)reattachContentLayer {
+  [self.layer addSublayer:contentLayer];
+  [self centerContentLayer];
+}
+
 - (void)enqueueMoreFrames {
   [self.controller requestFrames];
 }
@@ -244,7 +254,6 @@ const int32_t kStoredBufferMax = 10;
   if (avLayer) {
     // Define a block that we'll use to reset the video.
     void (^loopBlock)(CFRunLoopTimerRef) = ^(CFRunLoopTimerRef timer) {
-      [avLayer flush];
       CMTimebaseSetTime(avLayer.controlTimebase, CMTimeMake(0, 1));
       if (lastModel.willRequestFramesRepeatedly) {
         VideoHolder* holder = self;

@@ -26,19 +26,17 @@
 @end
 
 @implementation MainViewController {
-  NSWindow* oldWindow;
-  NSView* oldContentView;
-  NSView* oldVideoHolderSuperview;
-  NSRect oldVideoHolderFrame;
+  NSColor* oldWindowColor;
+  NSRect oldContentViewFrame;
+  NSArray* oldSubviews;
   VideoDecoder* videoDecoder;
 }
 
 - (void)viewDidLoad {
   [super viewDidLoad];
 
-  oldWindow = nil;
-  oldContentView = nil;
-  oldVideoHolderSuperview = nil;
+  oldWindowColor = nil;
+  oldSubviews = nil;
   videoDecoder = [[VideoDecoder alloc] initWithController:self];
 
   // Listen to all the properties that might change in our model.
@@ -60,9 +58,8 @@
   [_pixelBufferIOSurfaceCoreAnimationCompatibilityButton release];
   [_videoHolder release];
 
-  [oldWindow release];
-  [oldContentView release];
-  [oldVideoHolderSuperview release];
+  [oldWindowColor release];
+  [oldSubviews release];
   [videoDecoder release];
   [self.videoModel removeObserver:self forKeyPath:@"layerClass"];
   [self.videoModel removeObserver:self forKeyPath:@"buffering"];
@@ -142,29 +139,44 @@
 }
 
 - (void)windowWillEnterFullScreen:(NSNotification *)notification {
-  oldWindow = [self.view.window retain];
-  oldContentView = [oldWindow.contentView retain];
-  oldVideoHolderSuperview = [self.videoHolder.superview retain];
+  CALayer* layer = [self.videoHolder detachContentLayer];
 
-  oldVideoHolderFrame = self.videoHolder.frame;
+  NSWindow* window = self.view.window;
+  oldContentViewFrame = window.contentView.frame;
 
-  [self.videoHolder removeFromSuperview];
-  oldWindow.contentView = self.videoHolder;
+  oldSubviews = [window.contentView.subviews copy];
+  window.contentView.subviews = [NSArray array];
+  window.contentView.wantsLayer = YES;
+  [window.contentView setLayer:layer];
+
+  oldWindowColor = [window.backgroundColor retain];
+  window.backgroundColor = [NSColor blackColor];
+
+  [NSCursor hide];
 }
 
 - (void)windowWillExitFullScreen:(NSNotification *)notification {
-  oldWindow.contentView = oldContentView;
-  [oldVideoHolderSuperview addSubview:self.videoHolder];
+  NSWindow* window = self.view.window;
 
-  [oldVideoHolderSuperview release];
-  oldVideoHolderSuperview = nil;
-  [oldWindow release];
-  oldWindow = nil;
-  [oldContentView release];
-  oldContentView = nil;
+  window.backgroundColor = oldWindowColor;
+  [oldWindowColor release];
+  oldWindowColor = nil;
+
+  window.contentView.frame = oldContentViewFrame;
+
+  window.contentView.wantsLayer = NO;
+  [window.contentView setLayer:nil];
+
+  window.contentView.subviews = oldSubviews;
+  [oldSubviews release];
+  oldSubviews = nil;
+
+  window.contentView.frame = oldContentViewFrame;
+
+  [self.videoHolder reattachContentLayer];
 }
 
 - (void)windowDidExitFullScreen:(NSNotification *)notification {
-  self.videoHolder.frame = oldVideoHolderFrame;
+  [NSCursor unhide];
 }
 @end

@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A219422526CDB8FC00DB3232 /* AutoreleasedLock.m in Sources */ = {isa = PBXBuildFile; fileRef = A219422426CDB8FC00DB3232 /* AutoreleasedLock.m */; };
 		A258AE8726702F0200DA4405 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A258AE8626702F0200DA4405 /* AppDelegate.m */; };
 		A258AE8926702F0400DA4405 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A258AE8826702F0400DA4405 /* Assets.xcassets */; };
 		A258AE8C26702F0400DA4405 /* MainMenu.xib in Resources */ = {isa = PBXBuildFile; fileRef = A258AE8A26702F0400DA4405 /* MainMenu.xib */; };
@@ -21,6 +22,8 @@
 
 /* Begin PBXFileReference section */
 		A2035C482677C72100683251 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		A219422326CDB8FB00DB3232 /* AutoreleasedLock.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AutoreleasedLock.h; sourceTree = "<group>"; };
+		A219422426CDB8FC00DB3232 /* AutoreleasedLock.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AutoreleasedLock.m; sourceTree = "<group>"; };
 		A258AE8226702F0200DA4405 /* VideoPowerProto.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = VideoPowerProto.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A258AE8526702F0200DA4405 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		A258AE8626702F0200DA4405 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -75,6 +78,8 @@
 			children = (
 				A258AE8526702F0200DA4405 /* AppDelegate.h */,
 				A258AE8626702F0200DA4405 /* AppDelegate.m */,
+				A219422326CDB8FB00DB3232 /* AutoreleasedLock.h */,
+				A219422426CDB8FC00DB3232 /* AutoreleasedLock.m */,
 				A258AE8826702F0400DA4405 /* Assets.xcassets */,
 				A2FF896226B487C900E0B4E4 /* ColoredBackgroundView.h */,
 				A2FF896326B487C900E0B4E4 /* ColoredBackgroundView.m */,
@@ -168,6 +173,7 @@
 				A268CC7F2672AFBF006A180E /* VideoHolder.m in Sources */,
 				A2F26BCB26796A7500F4939F /* VideoDecoder.m in Sources */,
 				A268CC822672C9B0006A180E /* VideoModel.m in Sources */,
+				A219422526CDB8FC00DB3232 /* AutoreleasedLock.m in Sources */,
 				A2FF896426B487C900E0B4E4 /* ColoredBackgroundView.m in Sources */,
 				A268CC7C26728D18006A180E /* MainViewController.m in Sources */,
 				A258AE8726702F0200DA4405 /* AppDelegate.m in Sources */,
