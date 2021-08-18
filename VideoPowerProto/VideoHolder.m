@@ -29,6 +29,8 @@
   VideoModel* lastModel;
   float aspectRatio;
   dispatch_queue_global_t queueToUse;
+
+  CMTime presentationTimeOfLastBuffer;
 }
 
 const int32_t kStoredBufferMax = 10;
@@ -44,6 +46,7 @@ const int32_t kStoredBufferMax = 10;
   lastModel = nil;
   aspectRatio = 1.0f;
   queueToUse = dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0);
+  presentationTimeOfLastBuffer = kCMTimeInvalid;
 
   // Set some initial properties on our backing layer.
   self.wantsLayer = YES;
@@ -83,6 +86,8 @@ const int32_t kStoredBufferMax = 10;
   if (avLayer) {
     [avLayer stopRequestingMediaData];
   }
+
+  presentationTimeOfLastBuffer = kCMTimeInvalid;
 
   // Remove content layer and all the sublayers of the backing layer.
   [contentLayer release];
@@ -196,6 +201,8 @@ const int32_t kStoredBufferMax = 10;
 
   //NSLog(@"handleBuffer buffer is %@.", buffer);
 
+  presentationTimeOfLastBuffer = CMSampleBufferGetOutputPresentationTimeStamp(buffer);
+
   // Track whether we want more buffers. Generally, we do, but certain buffer
   // properties and the state of our display layer may change that.
   BOOL weWantMoreBuffers = YES;
@@ -208,22 +215,6 @@ const int32_t kStoredBufferMax = 10;
     //NSLog(@"handleBuffer post notification buffer.");
     CFNotificationCenterRef center = CFNotificationCenterGetLocalCenter();
     CFNotificationCenterPostNotification(center, kCMSampleBufferConsumerNotification_BufferConsumed , self, attachment, false);
-  }
-
-  // Is this the last buffer from the media?
-  if (CMGetAttachment(buffer, kCMSampleBufferAttachmentKey_PermanentEmptyMedia, NULL)) {
-    //NSLog(@"handleBuffer last frame.");
-
-    if (avLayer && lastModel.willRequestFramesRepeatedly) {
-      // Stop requesting buffers.
-      [avLayer stopRequestingMediaData];
-    }
-    weWantMoreBuffers = NO;
-
-    // Get the time the frame(s) from this buffer will be rendered, then loop
-    // once we reach that time.
-    CMTime timeToLoop = CMSampleBufferGetOutputPresentationTimeStamp(buffer);
-    [self restartAtTime:timeToLoop];
   }
 
   // Display/decode anything that's displayable.
@@ -343,6 +334,21 @@ const int32_t kStoredBufferMax = 10;
     frameImage = nil;
   }
   [frameImageLock unlock];
+}
+
+- (void)noMoreBuffers {
+  if (CMTimeCompare(presentationTimeOfLastBuffer, kCMTimeInvalid) == 0) {
+    return;
+  }
+
+  if (avLayer && lastModel.willRequestFramesRepeatedly) {
+    // Stop requesting buffers.
+    [avLayer stopRequestingMediaData];
+  }
+
+  // Get the time the frame(s) from the last buffer will be rendered, then loop
+  // once we reach that time.
+  [self restartAtTime:presentationTimeOfLastBuffer];
 }
 
 @end

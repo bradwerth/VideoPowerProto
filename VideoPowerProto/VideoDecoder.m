@@ -445,6 +445,8 @@ void frameTimerCallback(void* context) {
       // Check status to see how to proceed.
       switch (status) {
         case AVAssetReaderStatusCompleted: {
+          [controller signalNoMoreBuffers];
+
           BOOL didReset = [self readAssetFromBeginning];
           if (!didReset) {
             return bufferTimeSeen;

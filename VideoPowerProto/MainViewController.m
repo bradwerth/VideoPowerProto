@@ -137,6 +137,10 @@
   [videoDecoder generateBuffers];
 }
 
+- (void)signalNoMoreBuffers {
+  [self.videoHolder noMoreBuffers];
+}
+
 - (void)windowWillEnterFullScreen:(NSNotification *)notification {
   oldWindow = [self.view.window retain];
   oldContentView = [oldWindow.contentView retain];

@@ -19,6 +19,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (BOOL)wantsMoreFrames;
 - (BOOL)handleBuffer:(CMSampleBufferRef)buffer;
 - (BOOL)handleFrame:(IOSurfaceRef)surface;
+- (void)signalNoMoreBuffers;
 
 - (void)requestFrames;
 
