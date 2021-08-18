@@ -19,6 +19,7 @@
   AVAssetTrack* firstVideoTrack;
   AVAssetReader* assetReader;
   AVAssetReaderTrackOutput* assetOutput;
+  NSRecursiveLock* assetStructuresLock;
   VTDecompressionSessionRef decompressor;
   CFAbsoluteTime timeAtStart;
   CFMutableArrayRef frameImages;
@@ -43,6 +44,7 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   firstVideoTrack = nil;
   assetReader = nil;
   assetOutput = nil;
+  assetStructuresLock = [[NSRecursiveLock alloc] init];
   decompressor = nil;
   timeAtStart = 0;
   frameImages = nil;
@@ -93,6 +95,7 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   }
   frameTimestamps = nil;
 
+  [assetStructuresLock lock];
   if (assetReader) {
     [assetReader cancelReading];
   }
@@ -104,6 +107,7 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
 
   [firstVideoTrack release];
   firstVideoTrack = nil;
+  [assetStructuresLock unlock];
 }
 
 - (void)resetWithModel:(nullable VideoModel*)model completionHandler:(void (^)(BOOL))block {
@@ -120,6 +124,7 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     return;
   }
 
+  [assetStructuresLock lock];
   asset = [[lastModel videoAsset] retain];
   if (asset) {
     // Load the tracks asynchronously, and then process them.
@@ -131,17 +136,22 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     // Call the block.
     block(NO);
   }
+  [assetStructuresLock unlock];
 }
 
 - (void)handleTracksWithCompletionHandler:(void (^)(BOOL))block {
   assert(lastModel);
   assert(asset);
 
+  // This lock would be much more convenient in a scoped object.
+  [assetStructuresLock lock];
+
   NSError* error = nil;
   AVKeyValueStatus status = [asset statusOfValueForKey:@"tracks" error:&error];
   if (status == AVKeyValueStatusFailed) {
     NSLog(@"Track loading failed with: %@.", error);
     block(NO);
+    [assetStructuresLock unlock];
     return;
   }
 
@@ -150,6 +160,7 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   if (!firstVideoTrack) {
     NSLog(@"No video track.");
     block(NO);
+    [assetStructuresLock unlock];
     return;
   }
 
@@ -167,19 +178,24 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     [firstVideoTrack loadValuesAsynchronouslyForKeys:@[@"formatDescriptions"] completionHandler:^{
       [decoder handleFormatsWithCompletionHandler:readBlock];
     }];
+    [assetStructuresLock unlock];
     return;
   }
 
   // We don't need to setup our decompressor, so call our readBlock directly.
   readBlock(YES);
+  [assetStructuresLock unlock];
 }
 
 - (void)handleFormatsWithCompletionHandler:(void (^)(BOOL))block {
+  [assetStructuresLock lock];
+
   assert(firstVideoTrack);
   NSUInteger formatCount = firstVideoTrack.formatDescriptions.count;
   if (formatCount == 0) {
     NSLog(@"No format description in first video track.");
     block(NO);
+    [assetStructuresLock unlock];
     return;
   }
 
@@ -190,6 +206,9 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   CMFormatDescriptionRef format = (__bridge CMFormatDescriptionRef)firstVideoTrack.formatDescriptions[0];
   VTDecompressionOutputCallbackRecord callback = {DecompressorCallback, self};
   OSStatus error = VTDecompressionSessionCreate(kCFAllocatorDefault, format, NULL, NULL, &callback, &decompressor);
+
+  [assetStructuresLock unlock];
+
   if (!decompressor) {
     NSLog(@"Failed to create decompression session with error %d.", error);
     block(NO);
@@ -308,6 +327,9 @@ void frameTimerCallback(void* context) {
     // displayed.
   }
 
+  // This lock would be more convenient wrapped in a scoped object.
+  [assetStructuresLock lock];
+
   if (assetReader) {
     [assetReader cancelReading];
   }
@@ -318,9 +340,10 @@ void frameTimerCallback(void* context) {
   assetOutput = nil;
 
   NSError* error = nil;
-  AVAssetReader* reader = [[AVAssetReader alloc] initWithAsset:asset error:&error];
-  if (reader == nil) {
+  assetReader = [[AVAssetReader alloc] initWithAsset:asset error:&error];
+  if (assetReader == nil) {
     NSLog(@"AssetReader creation failed with error: %@.", error);
+    [assetStructuresLock unlock];
     return NO;
   }
 
@@ -351,13 +374,12 @@ void frameTimerCallback(void* context) {
     [dict setValue:pixelFormatNumber forKey:(__bridge NSString*)kCVPixelBufferPixelFormatTypeKey];
   }
 
-  AVAssetReaderTrackOutput* output = [[AVAssetReaderTrackOutput alloc] initWithTrack:firstVideoTrack outputSettings:dict];
-  output.alwaysCopiesSampleData = NO;
-  [reader addOutput:output];
-  [reader startReading];
+  assetOutput = [[AVAssetReaderTrackOutput alloc] initWithTrack:firstVideoTrack outputSettings:dict];
+  assetOutput.alwaysCopiesSampleData = NO;
+  [assetReader addOutput:assetOutput];
+  [assetReader startReading];
 
-  assetReader = reader;
-  assetOutput = output;
+  [assetStructuresLock unlock];
   return YES;
 }
 
@@ -403,77 +425,79 @@ void frameTimerCallback(void* context) {
 
 - (CMTime)turnBuffersIntoFrames {
   assert(lastModel);
+  CMTime bufferTimeSeen = CMTimeMake(0, 1);
 
-  // This function is called from other threads, and has to be sensitive to
-  // our asset structures being released during the call.
-  @autoreleasepool {
-    CMTime bufferTimeSeen = CMTimeMake(0, 1);
+  // We're doing something really messy here. We need to hold the
+  // assetStructuresLock throughout this function, but it has *many* exit
+  // points. Ideally, we'd create a scoped structure to hold that lock, and let
+  // the compiler take care of it, but for now we're just going to be really
+  // careful and always unlock before we return.
+  [assetStructuresLock lock];
 
-    AVAssetReader* reader = [[assetReader retain] autorelease];
-    AVAssetReaderOutput* output = [[assetOutput retain] autorelease];
-    if (!reader || !output) {
-      return bufferTimeSeen;
-    }
-
-    // Capture as many sample buffers as we can.
-    BOOL wantsMoreFrames = [controller wantsMoreFrames];
-    while (wantsMoreFrames) {
-      // Grab frames while we can, as long as our controller wants them.
-      AVAssetReaderStatus status = [reader status];
-      while (status == AVAssetReaderStatusReading) {
-        CMSampleBufferRef buffer = [output copyNextSampleBuffer];
-        if (buffer) {
-          if (lastModel.canHandleBuffers) {
-            wantsMoreFrames = [controller handleBuffer:buffer];
-          } else {
-            wantsMoreFrames = [self decompressBufferIntoFrames:buffer];
-            bufferTimeSeen = CMTimeAdd(bufferTimeSeen, CMSampleBufferGetDuration(buffer));
-            if (CMTimeGetSeconds(bufferTimeSeen) >= SECONDS_OF_FRAMES_TO_BUFFER) {
-              //NSLog(@"turnBuffersIntoFrames exiting because we saw %f seconds of buffers.", CMTimeGetSeconds(bufferTimeSeen));
-              wantsMoreFrames = NO;
-            }
-          }
-          CFRelease(buffer);
-        }
-        status = [reader status];
-
-        if (!wantsMoreFrames) {
-          break;
-        }
-      }
-
-      // Check status to see how to proceed.
-      switch (status) {
-        case AVAssetReaderStatusCompleted: {
-          [controller signalNoMoreBuffers];
-
-          BOOL didReset = [self readAssetFromBeginning];
-          if (!didReset) {
-            return bufferTimeSeen;
-          }
-          // Re-establish our local asset structures.
-          reader = [[assetReader retain] autorelease];
-          output = [[assetOutput retain] autorelease];
-          if (!reader || !output) {
-            return bufferTimeSeen;
-          }
-          break;
-        }
-        case AVAssetReaderStatusFailed:
-        case AVAssetReaderStatusCancelled:
-        case AVAssetReaderStatusUnknown:
-          // That's enough for now. Our controller can try again.
-          return bufferTimeSeen;
-        default:
-          // The only reason we should reach this is if we are still reading and
-          // our controller doesn't want any more frames.
-          assert(status == AVAssetReaderStatusReading);
-          assert(!wantsMoreFrames);
-          break;
-      };
-    }
+  if (!assetReader || !assetOutput) {
+    [assetStructuresLock unlock];
     return bufferTimeSeen;
   }
+
+  // Capture as many sample buffers as we can.
+  BOOL wantsMoreFrames = [controller wantsMoreFrames];
+  while (wantsMoreFrames) {
+    // Grab frames while we can, as long as our controller wants them.
+    AVAssetReaderStatus status = [assetReader status];
+    while (status == AVAssetReaderStatusReading) {
+      CMSampleBufferRef buffer = [assetOutput copyNextSampleBuffer];
+      if (buffer) {
+        if (lastModel.canHandleBuffers) {
+          wantsMoreFrames = [controller handleBuffer:buffer];
+        } else {
+          wantsMoreFrames = [self decompressBufferIntoFrames:buffer];
+          bufferTimeSeen = CMTimeAdd(bufferTimeSeen, CMSampleBufferGetDuration(buffer));
+          if (CMTimeGetSeconds(bufferTimeSeen) >= SECONDS_OF_FRAMES_TO_BUFFER) {
+            //NSLog(@"turnBuffersIntoFrames exiting because we saw %f seconds of buffers.", CMTimeGetSeconds(bufferTimeSeen));
+            wantsMoreFrames = NO;
+          }
+        }
+        CFRelease(buffer);
+      }
+      status = [assetReader status];
+
+      if (!wantsMoreFrames) {
+        break;
+      }
+    }
+
+    // Check status to see how to proceed.
+    switch (status) {
+      case AVAssetReaderStatusCompleted: {
+        [controller signalNoMoreBuffers];
+
+        BOOL didReset = [self readAssetFromBeginning];
+        if (!didReset) {
+          [assetStructuresLock unlock];
+          return bufferTimeSeen;
+        }
+        if (!assetReader || !assetOutput) {
+          [assetStructuresLock unlock];
+          return bufferTimeSeen;
+        }
+        break;
+      }
+      case AVAssetReaderStatusFailed:
+      case AVAssetReaderStatusCancelled:
+      case AVAssetReaderStatusUnknown:
+        // That's enough for now. Our controller can try again.
+        [assetStructuresLock unlock];
+        return bufferTimeSeen;
+      default:
+        // The only reason we should reach this is if we are still reading and
+        // our controller doesn't want any more frames.
+        assert(status == AVAssetReaderStatusReading);
+        assert(!wantsMoreFrames);
+        break;
+    };
+  }
+  [assetStructuresLock unlock];
+  return bufferTimeSeen;
 }
 
 - (void)stopDecompressor {
