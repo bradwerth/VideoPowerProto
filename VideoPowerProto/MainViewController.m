@@ -26,8 +26,6 @@
 @end
 
 @implementation MainViewController {
-  NSColor* oldWindowColor;
-  NSRect oldContentViewFrame;
   NSArray* oldSubviews;
   VideoDecoder* videoDecoder;
 }
@@ -35,9 +33,10 @@
 - (void)viewDidLoad {
   [super viewDidLoad];
 
-  oldWindowColor = nil;
   oldSubviews = nil;
   videoDecoder = [[VideoDecoder alloc] initWithController:self];
+
+  self.view.window.contentView.wantsLayer = YES;
 
   // Listen to all the properties that might change in our model.
   [self.videoModel addObserver:self forKeyPath:@"layerClass" options:0 context:nil];
@@ -58,7 +57,6 @@
   [_pixelBufferIOSurfaceCoreAnimationCompatibilityButton release];
   [_videoHolder release];
 
-  [oldWindowColor release];
   [oldSubviews release];
   [videoDecoder release];
   [self.videoModel removeObserver:self forKeyPath:@"layerClass"];
@@ -139,41 +137,47 @@
 }
 
 - (void)windowWillEnterFullScreen:(NSNotification *)notification {
-  CALayer* layer = [self.videoHolder detachContentLayer];
-
-  NSWindow* window = self.view.window;
-  oldContentViewFrame = window.contentView.frame;
+  NSWindow* window = notification.object;
 
   oldSubviews = [window.contentView.subviews copy];
   window.contentView.subviews = [NSArray array];
-  window.contentView.wantsLayer = YES;
-  [window.contentView setLayer:layer];
 
-  oldWindowColor = [window.backgroundColor retain];
-  window.backgroundColor = [NSColor blackColor];
+  CALayer* backgroundLayer = [CALayer layer];
+  backgroundLayer.position = NSZeroPoint;
+  backgroundLayer.anchorPoint = NSZeroPoint;
+  backgroundLayer.bounds = window.contentView.bounds;
+  backgroundLayer.backgroundColor = [[NSColor blackColor] CGColor];
+  [window.contentView.layer addSublayer:backgroundLayer];
+
+  CALayer* videoLayer = [self.videoHolder detachContentLayer];
+  [window.contentView.layer addSublayer:videoLayer];
+  videoLayer.position = NSZeroPoint;
+  videoLayer.anchorPoint = NSZeroPoint;
+  // The correct size will be set in windowDidResize, which is called after windowWillEnterFullScreen.
 
   [NSCursor hide];
+}
+
+- (void)windowDidResize:(NSNotification *)notification {
+  NSWindow* window = notification.object;
+  if (window.styleMask & NSWindowStyleMaskFullScreen) {
+    // Make sure the black backdrop layer and the video layer are resized
+    // to fit the fullscreen size.
+    for (CALayer* sublayer in window.contentView.layer.sublayers) {
+      sublayer.bounds = window.contentView.bounds;
+    }
+  }
 }
 
 - (void)windowWillExitFullScreen:(NSNotification *)notification {
   NSWindow* window = self.view.window;
 
-  window.backgroundColor = oldWindowColor;
-  [oldWindowColor release];
-  oldWindowColor = nil;
-
-  window.contentView.frame = oldContentViewFrame;
-
-  window.contentView.wantsLayer = NO;
-  [window.contentView setLayer:nil];
+  window.contentView.layer.sublayers = @[];
+  [self.videoHolder reattachContentLayer];
 
   window.contentView.subviews = oldSubviews;
   [oldSubviews release];
   oldSubviews = nil;
-
-  window.contentView.frame = oldContentViewFrame;
-
-  [self.videoHolder reattachContentLayer];
 }
 
 - (void)windowDidExitFullScreen:(NSNotification *)notification {
