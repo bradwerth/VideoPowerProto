@@ -27,6 +27,8 @@
 
 @implementation MainViewController {
   NSRect oldContentViewFrame;
+  CALayer* backgroundLayer;
+  CALayer* videoLayer;
   NSArray* oldSubviews;
   VideoDecoder* videoDecoder;
 }
@@ -34,10 +36,13 @@
 - (void)viewDidLoad {
   [super viewDidLoad];
 
+  backgroundLayer = nil;
+  videoLayer = nil;
   oldSubviews = nil;
   videoDecoder = [[VideoDecoder alloc] initWithController:self];
 
-  self.view.window.contentView.wantsLayer = YES;
+  NSWindow* window = self.view.window;
+  window.contentView.wantsLayer = YES;
 
   // Listen to all the properties that might change in our model.
   [self.videoModel addObserver:self forKeyPath:@"layerClass" options:0 context:nil];
@@ -58,6 +63,8 @@
   [_pixelBufferIOSurfaceCoreAnimationCompatibilityButton release];
   [_videoHolder release];
 
+  [videoLayer release];
+  [backgroundLayer release];
   [oldSubviews release];
   [videoDecoder release];
   [self.videoModel removeObserver:self forKeyPath:@"layerClass"];
@@ -142,16 +149,21 @@
   oldContentViewFrame = window.contentView.frame;
 
   oldSubviews = [window.contentView.subviews copy];
-  window.contentView.subviews = [NSArray array];
+  window.contentView.subviews = @[];
 
-  CALayer* backgroundLayer = [CALayer layer];
-  backgroundLayer.position = NSZeroPoint;
-  backgroundLayer.anchorPoint = NSZeroPoint;
-  backgroundLayer.bounds = window.contentView.bounds;
-  backgroundLayer.backgroundColor = [[NSColor blackColor] CGColor];
-  [window.contentView.layer addSublayer:backgroundLayer];
+  // Lazily create the background layer.
+  if (!backgroundLayer) {
+    backgroundLayer = [CALayer layer];
+    backgroundLayer.position = NSZeroPoint;
+    backgroundLayer.anchorPoint = NSZeroPoint;
+    backgroundLayer.bounds = window.contentView.bounds;
+    backgroundLayer.backgroundColor = [[NSColor blackColor] CGColor];
+    [window.contentView.layer addSublayer:backgroundLayer];
+  }
 
-  CALayer* videoLayer = [self.videoHolder detachContentLayer];
+  backgroundLayer.hidden = NO;
+
+  videoLayer = [[self.videoHolder detachContentLayer] retain];
   [window.contentView.layer addSublayer:videoLayer];
   videoLayer.position = NSZeroPoint;
   videoLayer.anchorPoint = NSZeroPoint;
@@ -174,8 +186,12 @@
 - (void)windowWillExitFullScreen:(NSNotification *)notification {
   NSWindow* window = self.view.window;
 
-  window.contentView.layer.sublayers = @[];
+  backgroundLayer.hidden = YES;
+
+  [videoLayer removeFromSuperlayer];
   [self.videoHolder reattachContentLayer];
+  [videoLayer release];
+  videoLayer = nil;
 
   window.contentView.frame = oldContentViewFrame;
 
