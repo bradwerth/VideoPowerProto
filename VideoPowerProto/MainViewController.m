@@ -26,6 +26,7 @@
 @end
 
 @implementation MainViewController {
+  NSRect oldContentViewFrame;
   NSArray* oldSubviews;
   VideoDecoder* videoDecoder;
 }
@@ -138,6 +139,7 @@
 
 - (void)windowWillEnterFullScreen:(NSNotification *)notification {
   NSWindow* window = notification.object;
+  oldContentViewFrame = window.contentView.frame;
 
   oldSubviews = [window.contentView.subviews copy];
   window.contentView.subviews = [NSArray array];
@@ -174,6 +176,8 @@
 
   window.contentView.layer.sublayers = @[];
   [self.videoHolder reattachContentLayer];
+
+  window.contentView.frame = oldContentViewFrame;
 
   window.contentView.subviews = oldSubviews;
   [oldSubviews release];
