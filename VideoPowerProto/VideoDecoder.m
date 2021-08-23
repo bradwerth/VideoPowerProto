@@ -28,6 +28,8 @@
   BOOL frameTimerActive;
   dispatch_queue_global_t frameTimerQueue;
   dispatch_source_t frameTimerSource;
+  CFRunLoopRef generateRunLoop;
+  CFRunLoopTimerRef generateTimer;
 }
 
 static const double MAX_FRAME_RATE = 60.0;
@@ -58,6 +60,12 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   dispatch_source_set_timer(frameTimerSource, DISPATCH_TIME_NOW, FRAME_INTERVAL_NS, FRAME_INTERVAL_LEEWAY_NS);
   dispatch_set_context(frameTimerSource, self);
   dispatch_source_set_event_handler_f(frameTimerSource, frameTimerCallback);
+
+  // Setup the timer and runloop we'll use to reschedule generateBuffers, if
+  // needed;
+  // generateRunLoop is unretained.
+  generateRunLoop = CFRunLoopGetMain();
+  generateTimer = nil;
   
   return self;
 }
@@ -75,11 +83,19 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   dispatch_resume(frameTimerSource);
   dispatch_release(frameTimerSource);
   dispatch_release(frameTimerQueue);
+
   [super dealloc];
 }
 
 - (void)stopDecode {
   [self stopDecompressor];
+
+  assert(generateRunLoop);
+  if (generateTimer) {
+    CFRunLoopRemoveTimer(generateRunLoop, generateTimer, kCFRunLoopDefaultMode);
+    CFRelease(generateTimer);
+  }
+  generateTimer = nil;
 
   if (frameTimerActive) {
     dispatch_suspend(frameTimerSource);
@@ -339,31 +355,35 @@ void frameTimerCallback(void* context) {
     return NO;
   }
 
-  NSDictionary<NSString*, id>* dict = [NSMutableDictionary<NSString*, id> dictionary];
+  NSDictionary<NSString*, id>* dict = nil;
 
-  // Always specify IOSurface key. Using a blank dictionary lets the OS decide
-  // the best way to allocate IOSurfaces.
-  [dict setValue:[NSDictionary dictionary] forKey:(__bridge NSString*)kCVPixelBufferIOSurfacePropertiesKey];
+  if (lastModel.canHandleBuffers) {
+    dict = [NSMutableDictionary<NSString*, id> dictionary];
 
-  // Handle pixel format keys.
-  OSType pixelFormat;
-  switch (lastModel.format) {
-    case FormatUnspecified:
-      pixelFormat = 0;
-      break;
-    case Format422YpCbCr8:
-      pixelFormat = kCVPixelFormatType_422YpCbCr8;
-      break;
-    case Format420YpCbCr8BiPlanarVideoRange:
-      pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
-      break;
-    case Format420YpCbCr8BiPlanarFullRange:
-      pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange;
-      break;
-  }
-  NSNumber* pixelFormatNumber = [NSNumber numberWithInt:pixelFormat];
-  if (pixelFormat != 0) {
-    [dict setValue:pixelFormatNumber forKey:(__bridge NSString*)kCVPixelBufferPixelFormatTypeKey];
+    // Always specify IOSurface key. Using a blank dictionary lets the OS decide
+    // the best way to allocate IOSurfaces.
+    [dict setValue:[NSDictionary dictionary] forKey:(__bridge NSString*)kCVPixelBufferIOSurfacePropertiesKey];
+
+    // Handle pixel format keys.
+    OSType pixelFormat;
+    switch (lastModel.format) {
+      case FormatUnspecified:
+        pixelFormat = 0;
+        break;
+      case Format422YpCbCr8:
+        pixelFormat = kCVPixelFormatType_422YpCbCr8;
+        break;
+      case Format420YpCbCr8BiPlanarVideoRange:
+        pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
+        break;
+      case Format420YpCbCr8BiPlanarFullRange:
+        pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange;
+        break;
+    }
+    NSNumber* pixelFormatNumber = [NSNumber numberWithInt:pixelFormat];
+    if (pixelFormat != 0) {
+      [dict setValue:pixelFormatNumber forKey:(__bridge NSString*)kCVPixelBufferPixelFormatTypeKey];
+    }
   }
 
   assetOutput = [[AVAssetReaderTrackOutput alloc] initWithTrack:firstVideoTrack outputSettings:dict];
@@ -403,14 +423,12 @@ void frameTimerCallback(void* context) {
     CFAbsoluteTime absoluteNow = CFAbsoluteTimeGetCurrent();
     CFAbsoluteTime absoluteTarget = absoluteNow + seconds;
 
+    // Tick our generateTimer to run again, at absoluteTarget.
     VideoDecoder* decoder = self;
-
-    CFRunLoopRef runLoop = CFRunLoopGetMain();
-    CFRunLoopTimerRef loopTimer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, absoluteTarget, 0, 0, 0, ^(CFRunLoopTimerRef timer) {
+    generateTimer = CFRunLoopTimerCreateWithHandler(kCFAllocatorDefault, absoluteTarget, 0, 0, 0, ^(CFRunLoopTimerRef timer) {
       [decoder generateBuffers];
     });
-    CFRunLoopAddTimer(runLoop, loopTimer, kCFRunLoopDefaultMode);
-    CFRelease(loopTimer);
+    CFRunLoopAddTimer(generateRunLoop, generateTimer, kCFRunLoopDefaultMode);
   }
 }
 
@@ -483,6 +501,7 @@ void frameTimerCallback(void* context) {
 
 - (void)stopDecompressor {
   if (decompressor) {
+    VTDecompressionSessionWaitForAsynchronousFrames(decompressor);
     VTDecompressionSessionInvalidate(decompressor);
     CFRelease(decompressor);
     decompressor = nil;
@@ -501,10 +520,11 @@ void frameTimerCallback(void* context) {
   }
 
   VTDecodeFrameFlags flags = kVTDecodeFrame_EnableAsynchronousDecompression | kVTDecodeFrame_EnableTemporalProcessing;
+
   OSStatus error = VTDecompressionSessionDecodeFrame(decompressor, buffer, flags, buffer, NULL);
   BOOL decodeSuccess = (error == noErr);
   if (!decodeSuccess) {
-    NSLog(@"decompressBufferIntoFrames failed to decode buffer %@.", buffer);
+    NSLog(@"decompressBufferIntoFrames failed to decode buffer %@ with error %@.", buffer, [VideoDecoder decodeErrorToString:error]);
   }
 
   // See if our frameCount is approaching our limit.
@@ -521,6 +541,30 @@ void frameTimerCallback(void* context) {
   }
   [controller handleFrame:surface];
   CFRelease(surface);
+}
+
++ (NSString*)decodeErrorToString:(OSStatus)error {
+  switch (error) {
+    case kVTFormatDescriptionChangeNotSupportedErr:
+      return @"kVTFormatDescriptionChangeNotSupportedErr";
+    case kVTVideoDecoderAuthorizationErr:
+      return @"kVTVideoDecoderAuthorizationErr";
+    case kVTVideoDecoderBadDataErr:
+      return @"kVTVideoDecoderBadDataErr";
+    case kVTVideoDecoderMalfunctionErr:
+      return @"kVTVideoDecoderMalfunctionErr";
+    case kVTVideoDecoderNotAvailableNowErr:
+      return @"kVTVideoDecoderNotAvailableNowErr";
+    case kVTVideoDecoderUnsupportedDataFormatErr:
+      return @"kVTVideoDecoderUnsupportedDataFormatErr";
+    case kVTVideoEncoderAuthorizationErr:
+      return @"kVTVideoEncoderAuthorizationErr";
+    case kVTVideoDecoderNeedsRosettaErr:
+      return @"kVTVideoDecoderNeedsRosettaErr";
+    case kVTVideoDecoderRemovedErr:
+      return @"kVTVideoDecoderRemovedErr";
+  }
+  return [NSString stringWithFormat:@"%d", error];
 }
 
 @end
