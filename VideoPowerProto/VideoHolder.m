@@ -19,12 +19,9 @@
   // avLayer is an unretained alias of contentLayer that indicates we're using
   // this type of layer.
   AVSampleBufferDisplayLayer* avLayer;
-  // frameImage is the image content displayed by the contentLayer, if we are
+  // frameSurface is the image content displayed by the contentLayer, if we are
   // being fed frames directly.
-  CGImageRef frameImage;
-  NSLock* frameImageLock;
-  // frameConversionContext is used to convert surfaces into frame images.
-  CIContext* frameConversionContext;
+  IOSurfaceRef frameSurface;
   
   VideoModel* lastModel;
   float aspectRatio;
@@ -40,9 +37,7 @@ const int32_t kStoredBufferMax = 10;
   // act as a layer-backed view.
   contentLayer = nil;
   avLayer = nil;
-  frameImage = nil;
-  frameImageLock = [[NSLock alloc] init];
-  frameConversionContext = [[CIContext alloc] init];
+  frameSurface = nil;
   lastModel = nil;
   aspectRatio = 1.0f;
   queueToUse = dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0);
@@ -72,6 +67,14 @@ const int32_t kStoredBufferMax = 10;
   }];
 }
 
+- (void)dealloc {
+  if (frameSurface) {
+    CFRelease(frameSurface);
+  }
+  frameSurface = nil;
+  [super dealloc];
+}
+
 - (void)resetWithModel:(VideoModel* _Nullable)model {
   // Copy the model to lock in its values, then release the old model.
   VideoModel *oldModel = lastModel;
@@ -94,13 +97,6 @@ const int32_t kStoredBufferMax = 10;
   contentLayer = nil;
   avLayer = nil;
   self.layer.sublayers = nil;
-
-  [frameImageLock lock];
-  if (frameImage) {
-    CFRelease(frameImage);
-  }
-  frameImage = nil;
-  [frameImageLock unlock];
 
   if (!lastModel) {
     return;
@@ -298,19 +294,16 @@ const int32_t kStoredBufferMax = 10;
 }
 
 - (BOOL)handleFrame:(IOSurfaceRef)surface {
-  // We might have a stale frameImage. If we do, capture it and release it
-  // after we have updated frameImage.
-  [frameImageLock lock];
-  CGImageRef staleFrameImage = frameImage;
+  // We might have a stale frameSurface. If we do, capture it and release it
+  // after we have updated frameSurface.
+  IOSurfaceRef staleFrameSurface = frameSurface;
 
-  // Convert the surface into a CGImageRef and store it as our frameImage. We
-  // do this by going through CIImage.
-  CIImage* image = [CIImage imageWithIOSurface:surface];
-  frameImage = [frameConversionContext createCGImage:image fromRect:image.extent];
-  [frameImageLock unlock];
+  // Store the surface for later display.
+  frameSurface = surface;
+  CFRetain(frameSurface);
 
-  if (staleFrameImage) {
-    CFRelease(staleFrameImage);
+  if (staleFrameSurface) {
+    CFRelease(staleFrameSurface);
   }
 
   CALayer* currentContentLayer = [contentLayer retain];
@@ -329,20 +322,14 @@ const int32_t kStoredBufferMax = 10;
     return;
   }
 
-  [frameImageLock lock];
-  if (frameImage) {
+  if (frameSurface) {
     // Figure out the correct scale to display this frame. Since the layer is
     // scaled to the aspect ratio of the content, we can just compute this based
     // on the width of the frame divided by the width of the layer.
-    CGFloat scale = CGImageGetWidth(frameImage) / layer.bounds.size.width;
+    CGFloat scale = IOSurfaceGetWidth(frameSurface) / layer.bounds.size.width;
     layer.contentsScale = scale;
-    layer.contents = (id)frameImage;
-
-    // We don't need to hold onto frameImage any longer.
-    CFRelease(frameImage);
-    frameImage = nil;
+    layer.contents = (id)frameSurface;
   }
-  [frameImageLock unlock];
 }
 
 - (void)noMoreBuffers {

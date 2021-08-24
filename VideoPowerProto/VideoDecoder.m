@@ -535,12 +535,11 @@ void frameTimerCallback(void* context) {
 
 - (void)outputImageAsFrame:(CVImageBufferRef)image {
   // See if we can get an IOSurface from the pixel buffer.
-  IOSurfaceRef surface = (__bridge IOSurfaceRef)CFRetain(CVPixelBufferGetIOSurface(image));
+  IOSurfaceRef surface = CVPixelBufferGetIOSurface(image);
   if (!surface) {
     return;
   }
   [controller handleFrame:surface];
-  CFRelease(surface);
 }
 
 + (NSString*)decodeErrorToString:(OSStatus)error {
