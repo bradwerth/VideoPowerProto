@@ -25,6 +25,7 @@
   
   VideoModel* lastModel;
   float aspectRatio;
+  CGFloat trackWidth;
   dispatch_queue_global_t queueToUse;
 
   CMTime presentationTimeOfLastBuffer;
@@ -40,6 +41,7 @@ const int32_t kStoredBufferMax = 10;
   frameSurface = nil;
   lastModel = nil;
   aspectRatio = 1.0f;
+  trackWidth = 0.0f;
   queueToUse = dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0);
   presentationTimeOfLastBuffer = kCMTimeInvalid;
 
@@ -136,8 +138,9 @@ const int32_t kStoredBufferMax = 10;
     }
 
     CGSize trackSize = track.naturalSize;
-    if (trackSize.width >= 0.0 && trackSize.height >= 0.0) {
-      aspectRatio = trackSize.width / trackSize.height;
+    trackWidth = trackSize.width;
+    if (trackWidth >= 0.0 && trackSize.height >= 0.0) {
+      aspectRatio = trackWidth / trackSize.height;
     } else {
       aspectRatio = 16.0f / 9.0f;
     }
@@ -189,6 +192,13 @@ const int32_t kStoredBufferMax = 10;
   [CATransaction setDisableActions:YES];
   contentLayer.position = CGPointMake((viewSize.width - requestedWidth) * 0.5f, (viewSize.height - requestedHeight) * 0.5f);
   contentLayer.bounds = CGRectMake(0.0f, 0.0f, requestedWidth, requestedHeight);
+
+  // Figure out the correct scale to display this frame. Since the layer is
+  // scaled to the aspect ratio of the content, we can just compute this based
+  // on the width of the frame divided by the width of the layer.
+  CGFloat scale = trackWidth / requestedWidth;
+  contentLayer.contentsScale = scale;
+
   [CATransaction commit];
 }
 
@@ -323,11 +333,6 @@ const int32_t kStoredBufferMax = 10;
   }
 
   if (frameSurface) {
-    // Figure out the correct scale to display this frame. Since the layer is
-    // scaled to the aspect ratio of the content, we can just compute this based
-    // on the width of the frame divided by the width of the layer.
-    CGFloat scale = IOSurfaceGetWidth(frameSurface) / layer.bounds.size.width;
-    layer.contentsScale = scale;
     layer.contents = (id)frameSurface;
   }
 }
