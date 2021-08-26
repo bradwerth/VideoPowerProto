@@ -23,8 +23,8 @@
   NSRecursiveLock* assetStructuresLock;
   VTDecompressionSessionRef decompressor;
   CFAbsoluteTime timeAtStart;
-  CFMutableArrayRef frameImages;
-  CFMutableArrayRef frameTimestamps;
+  NSMutableArray* frameImages;
+  NSMutableArray* frameTimestamps;
   BOOL frameTimerActive;
   dispatch_queue_global_t frameTimerQueue;
   dispatch_source_t frameTimerSource;
@@ -103,12 +103,12 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   frameTimerActive = NO;
 
   if (frameImages) {
-    CFRelease(frameImages);
+    [frameImages release];
   }
   frameImages = nil;
 
   if (frameTimestamps) {
-    CFRelease(frameTimestamps);
+    [frameTimestamps release];
   }
   frameTimestamps = nil;
 
@@ -228,8 +228,8 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   CFRetain(decompressor);
 
   // Setup our frame storage arrays.
-  frameImages = CFArrayCreateMutable(kCFAllocatorDefault, MAX_FRAMES_TO_HOLD, &kCFTypeArrayCallBacks);
-  frameTimestamps = CFArrayCreateMutable(kCFAllocatorDefault, MAX_FRAMES_TO_HOLD, &kCFTypeArrayCallBacks);
+  frameImages = [[NSMutableArray alloc] initWithCapacity:MAX_FRAMES_TO_HOLD];
+  frameTimestamps = [[NSMutableArray alloc] initWithCapacity:MAX_FRAMES_TO_HOLD];
 
   frameTimerActive = YES;
   dispatch_resume(frameTimerSource);
@@ -239,19 +239,19 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
 
 // Define a C-style callback for our decompressor.
 void DecompressorCallback(void *decompressionOutputRefCon, void *sourceFrameRefCon, OSStatus status, VTDecodeInfoFlags infoFlags, CVImageBufferRef image, CMTime presentationTimestamp, CMTime presentationDuration) {
+  //NSLog(@"DecompressorCallback.");
   VideoDecoder* decoder = (VideoDecoder*)decompressionOutputRefCon;
   [decoder storeImage:image withTimestamp:presentationTimestamp];
 }
 
 - (void)storeImage:(CVImageBufferRef)image withTimestamp:(CMTime)ts {
-  assert(frameImages);
-  assert(frameTimestamps);
-  CFAbsoluteTime playbackTime = timeAtStart + CMTimeGetSeconds(ts);
-  CFDateRef playbackDate = CFDateCreate(kCFAllocatorDefault, playbackTime);
+  Float64 seconds = CMTimeGetSeconds(ts);
+  CFAbsoluteTime playbackTime = timeAtStart + seconds;
+  //NSLog(@"storeImage playbackTime %f.", playbackTime);
+  NSDate* playbackDate = [NSDate dateWithTimeIntervalSinceReferenceDate:playbackTime];
 
-  CFArrayAppendValue(frameImages, image);
-  CFArrayAppendValue(frameTimestamps, playbackDate);
-  CFRelease(playbackDate);
+  [frameImages addObject:(__bridge id)image];
+  [frameTimestamps addObject:playbackDate];
 
   //NSLog(@"storeImage: stuffing frame at %f and now there are %ld/%ld frames.", playbackTime, (long)CFArrayGetCount(frameTimestamps), (long)MAX_FRAMES_TO_HOLD);
 }
@@ -266,42 +266,38 @@ void frameTimerCallback(void* context) {
 
   // This is called concurrently, so ensure that the structures we need are
   // retained for the duration of the call.
-  CFMutableArrayRef timestamps = nil;
-  if (frameTimestamps) {
-    timestamps = (__bridge CFMutableArrayRef)CFRetain(frameTimestamps);
-  }
+  NSMutableArray* timestamps = [frameTimestamps retain];
   if (!timestamps) {
     return;
   }
 
-  CFMutableArrayRef images = nil;
-  if (frameImages) {
-    images = (__bridge CFMutableArrayRef)CFRetain(frameImages);
-  }
+  NSMutableArray* images = [frameImages retain];
   if (!images) {
-    CFRelease(timestamps);
+    [timestamps release];
     return;
   }
 
-  CFAbsoluteTime now = CFAbsoluteTimeGetCurrent();
+  NSUInteger frameCount = [timestamps count];
 
-  // Loop through all the frames we're holding and output the latest one that
-  // has a timestamp before now (if any).
-  CFIndex frameCount = CFArrayGetCount(timestamps);
-
+  // If we're holding too many frames, get rid of the earliest ones.
   if (frameCount > MAX_FRAMES_TO_HOLD) {
     // Dump oldest frames to bring us back down to the maximum.
-    CFIndex lastStaleFrame = (frameCount - MAX_FRAMES_TO_HOLD) - 1;
+    NSUInteger lastStaleFrame = (frameCount - MAX_FRAMES_TO_HOLD) - 1;
     //NSLog(@"frameTimerCallback dumping %ld stale frames.", (long)(lastStaleFrame + 1));
-    CFArrayReplaceValues(images, CFRangeMake(0, lastStaleFrame), NULL, 0);
-    CFArrayReplaceValues(timestamps, CFRangeMake(0, lastStaleFrame), NULL, 0);
+    NSRange staleFrames = NSMakeRange(0, lastStaleFrame);
+    [images removeObjectsInRange:staleFrames];
+    [timestamps removeObjectsInRange:staleFrames];
     frameCount = MAX_FRAMES_TO_HOLD;
   }
 
-  CFIndex f = 0;
+  // Loop through all the frames we're holding and output the latest one that
+  // has a timestamp before now (if any).
+  NSDate* now = [NSDate date];
+  //NSLog(@"processFrameImages now is %f.", [now timeIntervalSinceReferenceDate]);
+
+  NSUInteger f = 0;
   while (f < frameCount) {
-    CFDateRef date = CFArrayGetValueAtIndex(timestamps, f);
-    CFAbsoluteTime ts = CFDateGetAbsoluteTime(date);
+    NSDate* ts = [timestamps objectAtIndex:f];
     if (ts > now) {
       // This frame is too new!
       break;
@@ -309,20 +305,22 @@ void frameTimerCallback(void* context) {
     f++;
   }
 
+  //NSLog(@"processFrameImages f is %ld and frameCount is %ld.", f, frameCount);
+
   // The previous frame we saw is the latest one that we can output.
-  CFIndex latestFrameIndex = f - 1;
-  //NSLog(@"frameTimerCallback latestFrameIndex is %ld.", (long)latestFrameIndex);
-  if (latestFrameIndex >= 0) {
-    CVImageBufferRef image = (CVImageBufferRef)CFArrayGetValueAtIndex(images, latestFrameIndex);
+  if (f > 0) {
+    NSUInteger latestFrameIndex = f - 1;
+    CVImageBufferRef image = (CVImageBufferRef)[images objectAtIndex:latestFrameIndex];
     [self outputImageAsFrame:image];
 
     // Get rid of all frames up to and including the one we just output.
-    CFArrayReplaceValues(images, CFRangeMake(0, latestFrameIndex), NULL, 0);
-    CFArrayReplaceValues(timestamps, CFRangeMake(0, latestFrameIndex), NULL, 0);
+    NSRange staleFrames = NSMakeRange(0, latestFrameIndex);
+    [images removeObjectsInRange:staleFrames];
+    [timestamps removeObjectsInRange:staleFrames];
   }
 
-  CFRelease(timestamps);
-  CFRelease(images);
+  [images release];
+  [timestamps release];
 }
 
 - (BOOL)readAssetFromBeginning {
@@ -395,6 +393,7 @@ void frameTimerCallback(void* context) {
 }
 
 - (void)generateBuffers {
+  //NSLog(@"generateBuffers.");
   assert(lastModel);
   CMTime bufferTimeSeen = [self turnBuffersIntoFrames];
   if (!lastModel.willRequestFramesRepeatedly) {
@@ -509,6 +508,8 @@ void frameTimerCallback(void* context) {
 }
 
 - (BOOL)decompressBufferIntoFrames:(CMSampleBufferRef)buffer {
+  //NSLog(@"decompressBufferIntoFrames.");
+
   if (!decompressor) {
     return NO;
   }
@@ -519,7 +520,8 @@ void frameTimerCallback(void* context) {
     return YES;
   }
 
-  VTDecodeFrameFlags flags = kVTDecodeFrame_EnableAsynchronousDecompression | kVTDecodeFrame_EnableTemporalProcessing;
+  //VTDecodeFrameFlags flags = kVTDecodeFrame_EnableAsynchronousDecompression | kVTDecodeFrame_EnableTemporalProcessing;
+  VTDecodeFrameFlags flags = 0;
 
   OSStatus error = VTDecompressionSessionDecodeFrame(decompressor, buffer, flags, buffer, NULL);
   BOOL decodeSuccess = (error == noErr);
@@ -529,11 +531,13 @@ void frameTimerCallback(void* context) {
 
   // See if our frameCount is approaching our limit.
   static const CFIndex FRAME_BUFFER_GETTING_FULL = (CFIndex)(MAX_FRAMES_TO_HOLD * 0.8);
-  CFIndex frameCount = CFArrayGetCount(frameTimestamps);
+  NSUInteger frameCount = [frameTimestamps count];
   return (frameCount < FRAME_BUFFER_GETTING_FULL);
 }
 
 - (void)outputImageAsFrame:(CVImageBufferRef)image {
+  //NSLog(@"outputImageAsFrame.");
+
   // See if we can get an IOSurface from the pixel buffer.
   IOSurfaceRef surface = CVPixelBufferGetIOSurface(image);
   if (!surface) {
