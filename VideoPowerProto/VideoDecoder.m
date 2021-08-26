@@ -22,9 +22,10 @@
   AVAssetReaderTrackOutput* assetOutput;
   NSRecursiveLock* assetStructuresLock;
   VTDecompressionSessionRef decompressor;
-  CFAbsoluteTime timeAtStart;
+  NSDate* timeAtStart;
   NSMutableArray* frameImages;
-  NSMutableArray* frameTimestamps;
+  NSMutableOrderedSet* frameTimestamps;
+  NSRecursiveLock* frameStructuresLock;
   BOOL frameTimerActive;
   dispatch_queue_global_t frameTimerQueue;
   dispatch_source_t frameTimerSource;
@@ -49,9 +50,10 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   assetOutput = nil;
   assetStructuresLock = [[NSRecursiveLock alloc] init];
   decompressor = nil;
-  timeAtStart = 0;
-  frameImages = nil;
-  frameTimestamps = nil;
+  timeAtStart = nil;
+  frameImages = [[NSMutableArray alloc] initWithCapacity:MAX_FRAMES_TO_HOLD];
+  frameTimestamps = [[NSMutableOrderedSet alloc] init];
+  frameStructuresLock = [[NSRecursiveLock alloc] init];
 
   // Create our frame timer, and start it up in a suspended state.
   frameTimerActive = NO;
@@ -80,9 +82,21 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   [asset release];
   asset = nil;
 
+  [assetStructuresLock release];
+  assetStructuresLock = nil;
+
   dispatch_resume(frameTimerSource);
   dispatch_release(frameTimerSource);
   dispatch_release(frameTimerQueue);
+
+  [frameImages release];
+  frameImages = nil;
+
+  [frameTimestamps release];
+  frameTimestamps = nil;
+
+  [frameStructuresLock release];
+  frameStructuresLock = nil;
 
   [super dealloc];
 }
@@ -102,29 +116,33 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   }
   frameTimerActive = NO;
 
-  if (frameImages) {
-    [frameImages release];
+  [timeAtStart release];
+  timeAtStart = nil;
+
+  @autoreleasepool {
+    [AutoreleasedLock lock:assetStructuresLock];
+    [AutoreleasedLock lock:frameStructuresLock];
+
+    if (frameImages) {
+      [frameImages removeAllObjects];
+    }
+
+    if (frameTimestamps) {
+      [frameTimestamps removeAllObjects];
+    }
+
+    if (assetReader) {
+      [assetReader cancelReading];
+    }
+    [assetReader release];
+    assetReader = nil;
+
+    [assetOutput release];
+    assetOutput = nil;
+
+    [firstVideoTrack release];
+    firstVideoTrack = nil;
   }
-  frameImages = nil;
-
-  if (frameTimestamps) {
-    [frameTimestamps release];
-  }
-  frameTimestamps = nil;
-
-  [AutoreleasedLock lock:assetStructuresLock];
-
-  if (assetReader) {
-    [assetReader cancelReading];
-  }
-  [assetReader release];
-  assetReader = nil;
-
-  [assetOutput release];
-  assetOutput = nil;
-
-  [firstVideoTrack release];
-  firstVideoTrack = nil;
 }
 
 - (void)resetWithModel:(nullable VideoModel*)model completionHandler:(void (^)(BOOL))block {
@@ -141,18 +159,20 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     return;
   }
 
-  [AutoreleasedLock lock:assetStructuresLock];
+  @autoreleasepool {
+    [AutoreleasedLock lock:assetStructuresLock];
 
-  asset = [[lastModel videoAsset] retain];
-  if (asset) {
-    // Load the tracks asynchronously, and then process them.
-    VideoDecoder* decoder = self;
-    [asset loadValuesAsynchronouslyForKeys:@[@"tracks"] completionHandler:^{
-      [decoder handleTracksWithCompletionHandler:block];
-    }];
-  } else {
-    // Call the block.
-    block(NO);
+    asset = [[lastModel videoAsset] retain];
+    if (asset) {
+      // Load the tracks asynchronously, and then process them.
+      VideoDecoder* decoder = self;
+      [asset loadValuesAsynchronouslyForKeys:@[@"tracks"] completionHandler:^{
+        [decoder handleTracksWithCompletionHandler:block];
+      }];
+    } else {
+      // Call the block.
+      block(NO);
+    }
   }
 }
 
@@ -160,76 +180,77 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
   assert(lastModel);
   assert(asset);
 
-  [AutoreleasedLock lock:assetStructuresLock];
+  @autoreleasepool {
+    [AutoreleasedLock lock:assetStructuresLock];
 
-  NSError* error = nil;
-  AVKeyValueStatus status = [asset statusOfValueForKey:@"tracks" error:&error];
-  if (status == AVKeyValueStatusFailed) {
-    NSLog(@"Track loading failed with: %@.", error);
-    block(NO);
-    return;
+    NSError* error = nil;
+    AVKeyValueStatus status = [asset statusOfValueForKey:@"tracks" error:&error];
+    if (status == AVKeyValueStatusFailed) {
+      NSLog(@"Track loading failed with: %@.", error);
+      block(NO);
+      return;
+    }
+
+    // Track property is loaded, so we can get the video tracks without blocking.
+    firstVideoTrack = [[[asset tracksWithMediaType:AVMediaTypeVideo] firstObject] retain];
+    if (!firstVideoTrack) {
+      NSLog(@"No video track.");
+      block(NO);
+      return;
+    }
+
+    // Define a block for triggering reading and reporting success, that we can
+    // either call ourselves, or pass as a completion handler.
+    void (^readBlock)(BOOL) = ^(BOOL success) {
+      BOOL readSuccess = (success && [self readAssetFromBeginning]);
+      block(readSuccess);
+    };
+
+    BOOL needToDecompressBuffers = !lastModel.canHandleBuffers;
+    if (needToDecompressBuffers) {
+      // Load the formatDescriptions asynchronously, and then process them.
+      VideoDecoder* decoder = self;
+      [firstVideoTrack loadValuesAsynchronouslyForKeys:@[@"formatDescriptions"] completionHandler:^{
+        [decoder handleFormatsWithCompletionHandler:readBlock];
+      }];
+      return;
+    }
+
+    // We don't need to setup our decompressor, so call our readBlock directly.
+    readBlock(YES);
   }
-
-  // Track property is loaded, so we can get the video tracks without blocking.
-  firstVideoTrack = [[[asset tracksWithMediaType:AVMediaTypeVideo] firstObject] retain];
-  if (!firstVideoTrack) {
-    NSLog(@"No video track.");
-    block(NO);
-    return;
-  }
-
-  // Define a block for triggering reading and reporting success, that we can
-  // either call ourselves, or pass as a completion handler.
-  void (^readBlock)(BOOL) = ^(BOOL success) {
-    BOOL readSuccess = (success && [self readAssetFromBeginning]);
-    block(readSuccess);
-  };
-
-  BOOL needToDecompressBuffers = !lastModel.canHandleBuffers;
-  if (needToDecompressBuffers) {
-    // Load the formatDescriptions asynchronously, and then process them.
-    VideoDecoder* decoder = self;
-    [firstVideoTrack loadValuesAsynchronouslyForKeys:@[@"formatDescriptions"] completionHandler:^{
-      [decoder handleFormatsWithCompletionHandler:readBlock];
-    }];
-    return;
-  }
-
-  // We don't need to setup our decompressor, so call our readBlock directly.
-  readBlock(YES);
 }
 
 - (void)handleFormatsWithCompletionHandler:(void (^)(BOOL))block {
   assert(firstVideoTrack);
 
-  [AutoreleasedLock lock:assetStructuresLock];
+  @autoreleasepool {
+    [AutoreleasedLock lock:assetStructuresLock];
 
-  NSUInteger formatCount = firstVideoTrack.formatDescriptions.count;
-  if (formatCount == 0) {
-    NSLog(@"No format description in first video track.");
-    block(NO);
-    return;
+    NSUInteger formatCount = firstVideoTrack.formatDescriptions.count;
+    if (formatCount == 0) {
+      NSLog(@"No format description in first video track.");
+      block(NO);
+      return;
+    }
+
+    if (formatCount > 1) {
+      NSLog(@"WARNING: We will only decode buffers with the first reported format.");
+    }
+
+    CMFormatDescriptionRef format = (__bridge CMFormatDescriptionRef)firstVideoTrack.formatDescriptions[0];
+    VTDecompressionOutputCallbackRecord callback = {DecompressorCallback, self};
+    OSStatus error = VTDecompressionSessionCreate(kCFAllocatorDefault, format, NULL, NULL, &callback, &decompressor);
+
+    if (!decompressor) {
+      NSLog(@"Failed to create decompression session with error %d.", error);
+      block(NO);
+      return;
+    }
+    assert(error == noErr);
   }
 
-  if (formatCount > 1) {
-    NSLog(@"WARNING: We will only decode buffers with the first reported format.");
-  }
-
-  CMFormatDescriptionRef format = (__bridge CMFormatDescriptionRef)firstVideoTrack.formatDescriptions[0];
-  VTDecompressionOutputCallbackRecord callback = {DecompressorCallback, self};
-  OSStatus error = VTDecompressionSessionCreate(kCFAllocatorDefault, format, NULL, NULL, &callback, &decompressor);
-
-  if (!decompressor) {
-    NSLog(@"Failed to create decompression session with error %d.", error);
-    block(NO);
-    return;
-  }
-  assert(error == noErr);
   CFRetain(decompressor);
-
-  // Setup our frame storage arrays.
-  frameImages = [[NSMutableArray alloc] initWithCapacity:MAX_FRAMES_TO_HOLD];
-  frameTimestamps = [[NSMutableArray alloc] initWithCapacity:MAX_FRAMES_TO_HOLD];
 
   frameTimerActive = YES;
   dispatch_resume(frameTimerSource);
@@ -246,14 +267,25 @@ void DecompressorCallback(void *decompressionOutputRefCon, void *sourceFrameRefC
 
 - (void)storeImage:(CVImageBufferRef)image withTimestamp:(CMTime)ts {
   Float64 seconds = CMTimeGetSeconds(ts);
-  CFAbsoluteTime playbackTime = timeAtStart + seconds;
-  //NSLog(@"storeImage playbackTime %f.", playbackTime);
-  NSDate* playbackDate = [NSDate dateWithTimeIntervalSinceReferenceDate:playbackTime];
+  NSDate* playbackDate = [NSDate dateWithTimeInterval:seconds sinceDate:timeAtStart];
 
-  [frameImages addObject:(__bridge id)image];
-  [frameTimestamps addObject:playbackDate];
+  // There is no guarantee that this frame is arriving in order. We need to
+  // figure out where to insert this frame, relative to the other frames we're
+  // already holding.
+  @autoreleasepool {
+    [AutoreleasedLock lock:frameStructuresLock];
 
-  //NSLog(@"storeImage: stuffing frame at %f and now there are %ld/%ld frames.", playbackTime, (long)CFArrayGetCount(frameTimestamps), (long)MAX_FRAMES_TO_HOLD);
+    NSRange wholeRange = NSMakeRange(0, [frameTimestamps count]);
+    NSUInteger index = [frameTimestamps indexOfObject:playbackDate inSortedRange:wholeRange options:NSBinarySearchingInsertionIndex usingComparator:^NSComparisonResult(NSDate* date1, NSDate* date2) {
+      return [date1 compare:date2];
+    }];
+
+    //NSLog(@"storeImage playbackTime %f stored at index %lu.", playbackTime, index);
+
+    // Insert the image and the date at the index.
+    [frameImages insertObject:(__bridge id)image atIndex:index];
+    [frameTimestamps insertObject:playbackDate atIndex:index];
+  }
 }
 
 void frameTimerCallback(void* context) {
@@ -264,130 +296,125 @@ void frameTimerCallback(void* context) {
 - (void)processFrameImages {
   assert(frameTimerActive);
 
-  // This is called concurrently, so ensure that the structures we need are
-  // retained for the duration of the call.
-  NSMutableArray* timestamps = [frameTimestamps retain];
-  if (!timestamps) {
-    return;
-  }
+  @autoreleasepool {
+    [AutoreleasedLock lock:frameStructuresLock];
 
-  NSMutableArray* images = [frameImages retain];
-  if (!images) {
-    [timestamps release];
-    return;
-  }
+    NSUInteger frameCount = [frameTimestamps count];
 
-  NSUInteger frameCount = [timestamps count];
-
-  // If we're holding too many frames, get rid of the earliest ones.
-  if (frameCount > MAX_FRAMES_TO_HOLD) {
-    // Dump oldest frames to bring us back down to the maximum.
-    NSUInteger lastStaleFrame = (frameCount - MAX_FRAMES_TO_HOLD) - 1;
-    //NSLog(@"frameTimerCallback dumping %ld stale frames.", (long)(lastStaleFrame + 1));
-    NSRange staleFrames = NSMakeRange(0, lastStaleFrame);
-    [images removeObjectsInRange:staleFrames];
-    [timestamps removeObjectsInRange:staleFrames];
-    frameCount = MAX_FRAMES_TO_HOLD;
-  }
-
-  // Loop through all the frames we're holding and output the latest one that
-  // has a timestamp before now (if any).
-  NSDate* now = [NSDate date];
-  //NSLog(@"processFrameImages now is %f.", [now timeIntervalSinceReferenceDate]);
-
-  NSUInteger f = 0;
-  while (f < frameCount) {
-    NSDate* ts = [timestamps objectAtIndex:f];
-    if (ts > now) {
-      // This frame is too new!
-      break;
+    // If we're holding too many frames, get rid of the earliest ones.
+    if (frameCount > MAX_FRAMES_TO_HOLD) {
+      // Dump oldest frames to bring us back down to the maximum.
+      NSUInteger lastStaleFrame = (frameCount - MAX_FRAMES_TO_HOLD) - 1;
+      //NSLog(@"frameTimerCallback dumping %ld stale frames.", (long)(lastStaleFrame + 1));
+      NSRange staleFrames = NSMakeRange(0, lastStaleFrame);
+      [frameImages removeObjectsInRange:staleFrames];
+      [frameTimestamps removeObjectsInRange:staleFrames];
+      frameCount = MAX_FRAMES_TO_HOLD;
     }
-    f++;
+
+    // Loop through all the frames we're holding and output the latest one that
+    // has a timestamp before now (if any).
+    NSDate* now = [NSDate date];
+    //NSLog(@"processFrameImages now is %f.", [now timeIntervalSinceReferenceDate]);
+
+    NSUInteger f = 0;
+    while (f < frameCount) {
+      NSDate* ts = [frameTimestamps objectAtIndex:f];
+      if ([now compare:ts] == NSOrderedAscending) {
+        // It's not time for this frame yet.
+        break;
+      }
+      f++;
+    }
+
+    //NSLog(@"processFrameImages f is %ld and frameCount is %ld.", f, frameCount);
+
+    // The previous frame we saw is the latest one that we can output.
+    if (f > 0) {
+      NSUInteger latestFrameIndex = f - 1;
+      CVImageBufferRef image = (CVImageBufferRef)[frameImages objectAtIndex:latestFrameIndex];
+      [self outputImageAsFrame:image];
+
+      // Get rid of all frames up to and including the one we just output.
+      NSRange staleFrames = NSMakeRange(0, latestFrameIndex);
+      [frameImages removeObjectsInRange:staleFrames];
+      [frameTimestamps removeObjectsInRange:staleFrames];
+    }
   }
-
-  //NSLog(@"processFrameImages f is %ld and frameCount is %ld.", f, frameCount);
-
-  // The previous frame we saw is the latest one that we can output.
-  if (f > 0) {
-    NSUInteger latestFrameIndex = f - 1;
-    CVImageBufferRef image = (CVImageBufferRef)[images objectAtIndex:latestFrameIndex];
-    [self outputImageAsFrame:image];
-
-    // Get rid of all frames up to and including the one we just output.
-    NSRange staleFrames = NSMakeRange(0, latestFrameIndex);
-    [images removeObjectsInRange:staleFrames];
-    [timestamps removeObjectsInRange:staleFrames];
-  }
-
-  [images release];
-  [timestamps release];
 }
 
 - (BOOL)readAssetFromBeginning {
   assert(lastModel);
   assert(firstVideoTrack);
 
-  if (!lastModel.canHandleBuffers) {
-    // Reset our timeAtStart.
-    timeAtStart = CFAbsoluteTimeGetCurrent();
+  @autoreleasepool {
+    [AutoreleasedLock lock:assetStructuresLock];
+    [AutoreleasedLock lock:frameStructuresLock];
 
-    // We don't dump frames we're holding, because stale ones could still be
-    // displayed.
-  }
-
-  [AutoreleasedLock lock:assetStructuresLock];
-
-  if (assetReader) {
-    [assetReader cancelReading];
-  }
-  [assetReader release];
-  assetReader = nil;
-
-  [assetOutput release];
-  assetOutput = nil;
-
-  NSError* error = nil;
-  assetReader = [[AVAssetReader alloc] initWithAsset:asset error:&error];
-  if (assetReader == nil) {
-    NSLog(@"AssetReader creation failed with error: %@.", error);
-    return NO;
-  }
-
-  NSDictionary<NSString*, id>* dict = nil;
-
-  if (lastModel.canHandleBuffers) {
-    dict = [NSMutableDictionary<NSString*, id> dictionary];
-
-    // Always specify IOSurface key. Using a blank dictionary lets the OS decide
-    // the best way to allocate IOSurfaces.
-    [dict setValue:[NSDictionary dictionary] forKey:(__bridge NSString*)kCVPixelBufferIOSurfacePropertiesKey];
-
-    // Handle pixel format keys.
-    OSType pixelFormat;
-    switch (lastModel.format) {
-      case FormatUnspecified:
-        pixelFormat = 0;
-        break;
-      case Format422YpCbCr8:
-        pixelFormat = kCVPixelFormatType_422YpCbCr8;
-        break;
-      case Format420YpCbCr8BiPlanarVideoRange:
-        pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
-        break;
-      case Format420YpCbCr8BiPlanarFullRange:
-        pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange;
-        break;
+    if (!lastModel.canHandleBuffers) {
+      // Reset our timeAtStart to the latest of either right now, or the latest
+      // timestamp frame we're holding.
+      NSDate* now = [NSDate date];
+      NSDate* latestFrameTimestamp = [frameTimestamps lastObject];
+      if (latestFrameTimestamp) {
+        timeAtStart = [[now laterDate:latestFrameTimestamp] retain];
+      } else {
+        timeAtStart = [now retain];
+      }
     }
-    NSNumber* pixelFormatNumber = [NSNumber numberWithInt:pixelFormat];
-    if (pixelFormat != 0) {
-      [dict setValue:pixelFormatNumber forKey:(__bridge NSString*)kCVPixelBufferPixelFormatTypeKey];
-    }
-  }
 
-  assetOutput = [[AVAssetReaderTrackOutput alloc] initWithTrack:firstVideoTrack outputSettings:dict];
-  assetOutput.alwaysCopiesSampleData = NO;
-  [assetReader addOutput:assetOutput];
-  [assetReader startReading];
+    if (assetReader) {
+      [assetReader cancelReading];
+    }
+    [assetReader release];
+    assetReader = nil;
+
+    [assetOutput release];
+    assetOutput = nil;
+
+    NSError* error = nil;
+    assetReader = [[AVAssetReader alloc] initWithAsset:asset error:&error];
+    if (assetReader == nil) {
+      NSLog(@"AssetReader creation failed with error: %@.", error);
+      return NO;
+    }
+
+    NSDictionary<NSString*, id>* dict = nil;
+
+    if (lastModel.canHandleBuffers) {
+      dict = [NSMutableDictionary<NSString*, id> dictionary];
+
+      // Always specify IOSurface key. Using a blank dictionary lets the OS decide
+      // the best way to allocate IOSurfaces.
+      [dict setValue:[NSDictionary dictionary] forKey:(__bridge NSString*)kCVPixelBufferIOSurfacePropertiesKey];
+
+      // Handle pixel format keys.
+      OSType pixelFormat;
+      switch (lastModel.format) {
+        case FormatUnspecified:
+          pixelFormat = 0;
+          break;
+        case Format422YpCbCr8:
+          pixelFormat = kCVPixelFormatType_422YpCbCr8;
+          break;
+        case Format420YpCbCr8BiPlanarVideoRange:
+          pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
+          break;
+        case Format420YpCbCr8BiPlanarFullRange:
+          pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange;
+          break;
+      }
+      NSNumber* pixelFormatNumber = [NSNumber numberWithInt:pixelFormat];
+      if (pixelFormat != 0) {
+        [dict setValue:pixelFormatNumber forKey:(__bridge NSString*)kCVPixelBufferPixelFormatTypeKey];
+      }
+    }
+
+    assetOutput = [[AVAssetReaderTrackOutput alloc] initWithTrack:firstVideoTrack outputSettings:dict];
+    assetOutput.alwaysCopiesSampleData = NO;
+    [assetReader addOutput:assetOutput];
+    [assetReader startReading];
+  }
 
   return YES;
 }
@@ -400,17 +427,10 @@ void frameTimerCallback(void* context) {
     // If we won't be called repeatedly, then re-schedule ourself to be called
     // again just before the buffers we decoded run out. But how soon? It
     // depends on how full is our frame array.
-    double fullness = 0.0;
-    static const double fullnessFactor = 3.0;
-    CFMutableArrayRef timestamps = nil;
-    if (frameTimestamps) {
-      timestamps = (__bridge CFMutableArrayRef)CFRetain(frameTimestamps);
-    }
-    if (timestamps) {
-      fullness = (double)CFArrayGetCount(timestamps) / (double)MAX_FRAMES_TO_HOLD;
-      CFRelease(timestamps);
-    }
+    NSUInteger frameCount = [frameTimestamps count];
+    double fullness = (double)frameCount / (double)MAX_FRAMES_TO_HOLD;
 
+    static const double fullnessFactor = 3.0;
     double seconds = CMTimeGetSeconds(bufferTimeSeen) * (fullness * fullnessFactor);
     if (seconds < 0.1) {
       seconds = 0.1;
@@ -435,65 +455,67 @@ void frameTimerCallback(void* context) {
   assert(lastModel);
   CMTime bufferTimeSeen = CMTimeMake(0, 1);
 
-  [AutoreleasedLock lock:assetStructuresLock];
+  @autoreleasepool {
+    [AutoreleasedLock lock:assetStructuresLock];
 
-  if (!assetReader || !assetOutput) {
-    return bufferTimeSeen;
-  }
-
-  // Capture as many sample buffers as we can.
-  BOOL wantsMoreFrames = [controller wantsMoreFrames];
-  while (wantsMoreFrames) {
-    // Grab frames while we can, as long as our controller wants them.
-    AVAssetReaderStatus status = [assetReader status];
-    while (status == AVAssetReaderStatusReading) {
-      CMSampleBufferRef buffer = [assetOutput copyNextSampleBuffer];
-      if (buffer) {
-        if (lastModel.canHandleBuffers) {
-          wantsMoreFrames = [controller handleBuffer:buffer];
-        } else {
-          wantsMoreFrames = [self decompressBufferIntoFrames:buffer];
-          bufferTimeSeen = CMTimeAdd(bufferTimeSeen, CMSampleBufferGetDuration(buffer));
-          if (CMTimeGetSeconds(bufferTimeSeen) >= SECONDS_OF_FRAMES_TO_BUFFER) {
-            //NSLog(@"turnBuffersIntoFrames exiting because we saw %f seconds of buffers.", CMTimeGetSeconds(bufferTimeSeen));
-            wantsMoreFrames = NO;
-          }
-        }
-        CFRelease(buffer);
-      }
-      status = [assetReader status];
-
-      if (!wantsMoreFrames) {
-        break;
-      }
+    if (!assetReader || !assetOutput) {
+      return bufferTimeSeen;
     }
 
-    // Check status to see how to proceed.
-    switch (status) {
-      case AVAssetReaderStatusCompleted: {
-        [controller signalNoMoreBuffers];
+    // Capture as many sample buffers as we can.
+    BOOL wantsMoreFrames = [controller wantsMoreFrames];
+    while (wantsMoreFrames) {
+      // Grab frames while we can, as long as our controller wants them.
+      AVAssetReaderStatus status = [assetReader status];
+      while (status == AVAssetReaderStatusReading) {
+        CMSampleBufferRef buffer = [assetOutput copyNextSampleBuffer];
+        if (buffer) {
+          if (lastModel.canHandleBuffers) {
+            wantsMoreFrames = [controller handleBuffer:buffer];
+          } else {
+            wantsMoreFrames = [self decompressBufferIntoFrames:buffer];
+            bufferTimeSeen = CMTimeAdd(bufferTimeSeen, CMSampleBufferGetDuration(buffer));
+            if (CMTimeGetSeconds(bufferTimeSeen) >= SECONDS_OF_FRAMES_TO_BUFFER) {
+              //NSLog(@"turnBuffersIntoFrames exiting because we saw %f seconds of buffers.", CMTimeGetSeconds(bufferTimeSeen));
+              wantsMoreFrames = NO;
+            }
+          }
+          CFRelease(buffer);
+        }
+        status = [assetReader status];
 
-        BOOL didReset = [self readAssetFromBeginning];
-        if (!didReset) {
-          return bufferTimeSeen;
+        if (!wantsMoreFrames) {
+          break;
         }
-        if (!assetReader || !assetOutput) {
-          return bufferTimeSeen;
-        }
-        break;
       }
-      case AVAssetReaderStatusFailed:
-      case AVAssetReaderStatusCancelled:
-      case AVAssetReaderStatusUnknown:
-        // That's enough for now. Our controller can try again.
-        return bufferTimeSeen;
-      default:
-        // The only reason we should reach this is if we are still reading and
-        // our controller doesn't want any more frames.
-        assert(status == AVAssetReaderStatusReading);
-        assert(!wantsMoreFrames);
-        break;
-    };
+
+      // Check status to see how to proceed.
+      switch (status) {
+        case AVAssetReaderStatusCompleted: {
+          [controller signalNoMoreBuffers];
+
+          BOOL didReset = [self readAssetFromBeginning];
+          if (!didReset) {
+            return bufferTimeSeen;
+          }
+          if (!assetReader || !assetOutput) {
+            return bufferTimeSeen;
+          }
+          break;
+        }
+        case AVAssetReaderStatusFailed:
+        case AVAssetReaderStatusCancelled:
+        case AVAssetReaderStatusUnknown:
+          // That's enough for now. Our controller can try again.
+          return bufferTimeSeen;
+        default:
+          // The only reason we should reach this is if we are still reading and
+          // our controller doesn't want any more frames.
+          assert(status == AVAssetReaderStatusReading);
+          assert(!wantsMoreFrames);
+          break;
+      };
+    }
   }
   return bufferTimeSeen;
 }
@@ -520,9 +542,8 @@ void frameTimerCallback(void* context) {
     return YES;
   }
 
-  //VTDecodeFrameFlags flags = kVTDecodeFrame_EnableAsynchronousDecompression | kVTDecodeFrame_EnableTemporalProcessing;
-  VTDecodeFrameFlags flags = 0;
-
+  VTDecodeFrameFlags flags = kVTDecodeFrame_EnableAsynchronousDecompression | kVTDecodeFrame_EnableTemporalProcessing;
+  
   OSStatus error = VTDecompressionSessionDecodeFrame(decompressor, buffer, flags, buffer, NULL);
   BOOL decodeSuccess = (error == noErr);
   if (!decodeSuccess) {

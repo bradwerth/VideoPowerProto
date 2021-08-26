@@ -7,23 +7,25 @@
 
 #import "AutoreleasedLock.h"
 
-@implementation AutoreleasedLock
+@interface AutoreleasedLock ()
+@property (nonatomic, retain) id<NSLocking> lock;
+@end
 
-id<NSLocking> lock;
+@implementation AutoreleasedLock
 
 + (instancetype)lock:(id<NSLocking>)lock {
   return [[[AutoreleasedLock alloc] initWithLock:lock] autorelease];
 }
 
-- (instancetype)initWithLock:(id<NSLocking>)inLock {
+- (instancetype)initWithLock:(id<NSLocking>)lock {
   self = [super init];
-  lock = inLock;
-  [lock lock];
+  self.lock = lock;
+  [self.lock lock];
   return self;
 }
 
 - (void)dealloc {
-  [lock unlock];
+  [self.lock unlock];
   [super dealloc];
 }
 
