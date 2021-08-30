@@ -32,11 +32,11 @@
 }
 
 - (BOOL) canHandleBuffers {
-  return (self.layerClass == LayerClassAVSampleBufferDisplayLayer);
+  return (self.layerClass == LayerClassAVSampleBufferDisplayLayer) && (self.buffering == BufferingDirect);
 }
 
 - (BOOL) willRequestFramesRepeatedly {
-  return (self.layerClass == LayerClassAVSampleBufferDisplayLayer);
+  return (self.layerClass == LayerClassAVSampleBufferDisplayLayer) && (self.buffering == BufferingDirect);
 }
 
 - (void) waitForVideoAssetFirstTrack: (void (^)(AVAssetTrack*))handler {

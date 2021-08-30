@@ -301,12 +301,13 @@ void frameTimerCallback(void* context) {
 
     NSUInteger frameCount = [frameTimestamps count];
 
-    // If we're holding too many frames, get rid of the earliest ones.
+    // If we're holding too many frames, get rid of the most recent ones.
     if (frameCount > MAX_FRAMES_TO_HOLD) {
-      // Dump oldest frames to bring us back down to the maximum.
-      NSUInteger lastStaleFrame = (frameCount - MAX_FRAMES_TO_HOLD) - 1;
-      //NSLog(@"frameTimerCallback dumping %ld stale frames.", (long)(lastStaleFrame + 1));
-      NSRange staleFrames = NSMakeRange(0, lastStaleFrame);
+      // Dump newest frames to bring us back down to the maximum. We do it this
+      // way to ensure that the older frames will eventually get output. If we
+      // dumped older frames, we run the risk of never catching up to the
+      // timestamp of the oldest frames in the queue.
+      NSRange staleFrames = NSMakeRange(MAX_FRAMES_TO_HOLD, frameCount - MAX_FRAMES_TO_HOLD);
       [frameImages removeObjectsInRange:staleFrames];
       [frameTimestamps removeObjectsInRange:staleFrames];
       frameCount = MAX_FRAMES_TO_HOLD;

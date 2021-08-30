@@ -304,6 +304,10 @@ const int32_t kStoredBufferMax = 10;
 }
 
 - (BOOL)handleFrame:(IOSurfaceRef)surface {
+  if (avLayer) {
+    return [self handleFrameAsBuffer:surface];
+  }
+
   // We might have a stale frameSurface. If we do, capture it and release it
   // after we have updated frameSurface.
   IOSurfaceRef staleFrameSurface = frameSurface;
@@ -323,6 +327,51 @@ const int32_t kStoredBufferMax = 10;
     }
     [currentContentLayer release];
   });
+  return YES;
+}
+
+- (BOOL)handleFrameAsBuffer:(IOSurfaceRef)surface {
+  //NSLog(@"handleFrameAsBuffer.");
+
+  // Convert the IOSurface into a CMSampleBuffer, so we can enqueue it in
+  // avLayer.
+  CVPixelBufferRef pixelBuffer = nil;
+  CVReturn cvValue =
+      CVPixelBufferCreateWithIOSurface(kCFAllocatorDefault, surface, nil, &pixelBuffer);
+  if (cvValue != kCVReturnSuccess) {
+    NSLog(@"Couldn't extract pixel buffer from frame surface.");
+    return NO;
+  }
+
+  CMVideoFormatDescriptionRef formatDescription;
+  OSStatus error = CMVideoFormatDescriptionCreateForImageBuffer(kCFAllocatorDefault, pixelBuffer,
+                                                                  &formatDescription);
+  if (error != noErr) {
+    NSLog(@"Couldn't determine format from pixel buffer, with error %d.", error);
+    return NO;
+  }
+
+  CMSampleBufferRef sampleBuffer = nil;
+  error = CMSampleBufferCreateReadyWithImageBuffer(
+      kCFAllocatorDefault, pixelBuffer, formatDescription, &kCMTimingInfoInvalid, &sampleBuffer);
+  if (error != noErr) {
+    NSLog(@"Couldn't recreate a CMSampleBuffer from the pixel buffer.");
+    return NO;
+  }
+
+  // Since we don't have timing information for the sample, before we enqueue
+  // it, we attach an attribute that specifies that the sample should be played
+  // immediately.
+  CFArrayRef attachmentsArray = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, YES);
+  if (!attachmentsArray || CFArrayGetCount(attachmentsArray) == 0) {
+    NSLog(@"Newly created CMSampleBuffer doesn't have an attachments array.");
+    return NO;
+  }
+  CFMutableDictionaryRef sample0Dictionary = (__bridge CFMutableDictionaryRef)(CFArrayGetValueAtIndex(attachmentsArray, 0));
+  CFDictionarySetValue(sample0Dictionary, kCMSampleAttachmentKey_DisplayImmediately,
+                       kCFBooleanTrue);
+
+  [avLayer enqueueSampleBuffer:sampleBuffer];
   return YES;
 }
 
