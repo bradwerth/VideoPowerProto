@@ -12,20 +12,16 @@
 
 - (nonnull id)copyWithZone:(nullable NSZone*)zone {
   VideoModel* model = [[VideoModel alloc] init];
+  model.videoFile = self.videoFile;
   model.layerClass = self.layerClass;
   model.buffering = self.buffering;
   model.format = self.format;
-  model.pixelBuffer = self.pixelBuffer;
   return model;
 }
 
-- (NSString*) videoFilename {
-  return @"HDRMovie2.mp4";
-}
-
 - (AVAsset*) videoAsset {
-  NSString* resource = [[self videoFilename] stringByDeletingPathExtension];
-  NSString* extension = [[self videoFilename] pathExtension];
+  NSString* resource = [[self videoFile] stringByDeletingPathExtension];
+  NSString* extension = [[self videoFile] pathExtension];
   NSBundle* bundle = [NSBundle mainBundle];
   NSURL* url = [bundle URLForResource:resource withExtension:extension subdirectory:@"Media"];
   return [AVAsset assetWithURL:url];

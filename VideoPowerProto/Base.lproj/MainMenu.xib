@@ -1,7 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="18122" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="19529" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="18122"/>
+        <deployment identifier="macosx"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="19529"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
@@ -432,7 +433,7 @@
                         <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" heightSizable="YES"/>
                         <subviews>
                             <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="G1o-Qq-lyU">
-                                <rect key="frame" x="18" y="194" width="79" height="16"/>
+                                <rect key="frame" x="18" y="166" width="79" height="16"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <textFieldCell key="cell" lineBreakMode="clipping" alignment="right" title="Layer Class:" id="AP1-uO-Hci">
                                     <font key="font" usesAppearanceFont="YES"/>
@@ -441,7 +442,7 @@
                                 </textFieldCell>
                             </textField>
                             <popUpButton verticalHuggingPriority="750" verifyAmbiguity="off" translatesAutoresizingMaskIntoConstraints="NO" id="pWS-HU-Pgb" userLabel="LayerClassPopUp">
-                                <rect key="frame" x="100" y="186" width="257" height="25"/>
+                                <rect key="frame" x="100" y="158" width="257" height="25"/>
                                 <popUpButtonCell key="cell" type="push" title="CALayer" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="VXN-7j-UT1" id="gCd-tc-0Yx">
                                     <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" metaFont="menu"/>
@@ -457,7 +458,7 @@
                                 </connections>
                             </popUpButton>
                             <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="KnZ-ko-cfO">
-                                <rect key="frame" x="18" y="163" width="79" height="16"/>
+                                <rect key="frame" x="18" y="135" width="79" height="16"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <textFieldCell key="cell" lineBreakMode="clipping" alignment="right" title="Buffering:" id="zrg-Pv-wJF">
                                     <font key="font" usesAppearanceFont="YES"/>
@@ -466,7 +467,7 @@
                                 </textFieldCell>
                             </textField>
                             <popUpButton verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="F4C-xs-ROU" userLabel="BufferingPopUp">
-                                <rect key="frame" x="100" y="156" width="257" height="25"/>
+                                <rect key="frame" x="100" y="128" width="257" height="25"/>
                                 <popUpButtonCell key="cell" type="push" title="Direct" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="Zas-xZ-4nh" id="86X-7l-rkN">
                                     <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" metaFont="menu"/>
@@ -481,15 +482,45 @@
                                     <action selector="selectBuffering:" target="Srn-Ee-aWU" id="kKa-Mn-0HS"/>
                                 </connections>
                             </popUpButton>
+                            <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="xzE-3i-fJt">
+                                <rect key="frame" x="138" y="7" width="97" height="32"/>
+                                <buttonCell key="cell" type="push" title="Fullscreen" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="GeA-v7-qOa">
+                                    <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
+                                    <font key="font" metaFont="system"/>
+                                </buttonCell>
+                                <connections>
+                                    <action selector="clickFullscreenButton:" target="Srn-Ee-aWU" id="G1K-11-h8C"/>
+                                </connections>
+                            </button>
+                            <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="yYF-cD-HUO">
+                                <rect key="frame" x="18" y="194" width="79" height="16"/>
+                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
+                                <textFieldCell key="cell" lineBreakMode="clipping" alignment="right" title="Video File:" id="8aN-eZ-ta3">
+                                    <font key="font" usesAppearanceFont="YES"/>
+                                    <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
+                                    <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
+                                </textFieldCell>
+                            </textField>
+                            <popUpButton verticalHuggingPriority="750" misplaced="YES" verifyAmbiguity="off" translatesAutoresizingMaskIntoConstraints="NO" id="YZT-C4-Puf" userLabel="VideoFilePopUp">
+                                <rect key="frame" x="100" y="186" width="257" height="25"/>
+                                <popUpButtonCell key="cell" type="push" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" id="PdA-MV-XOq">
+                                    <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
+                                    <font key="font" metaFont="menu"/>
+                                    <menu key="menu" id="CTV-dE-cmU"/>
+                                </popUpButtonCell>
+                                <connections>
+                                    <action selector="selectVideoFile:" target="Srn-Ee-aWU" id="Kfa-Cy-E8I"/>
+                                </connections>
+                            </popUpButton>
                             <box title="Pixel Buffer Attributes" id="fNl-fN-YNo">
-                                <rect key="frame" x="17" y="37" width="339" height="114"/>
+                                <rect key="frame" x="17" y="50" width="339" height="74"/>
                                 <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                 <view key="contentView" id="zIj-H2-c6Q">
-                                    <rect key="frame" x="3" y="3" width="333" height="96"/>
+                                    <rect key="frame" x="3" y="3" width="333" height="56"/>
                                     <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
                                     <subviews>
                                         <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="bIp-gY-VjV">
-                                            <rect key="frame" x="18" y="67" width="58" height="16"/>
+                                            <rect key="frame" x="18" y="27" width="58" height="16"/>
                                             <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
                                             <textFieldCell key="cell" lineBreakMode="clipping" alignment="right" title="Format:" id="KfL-Ah-Bb1">
                                                 <font key="font" usesAppearanceFont="YES"/>
@@ -498,7 +529,7 @@
                                             </textFieldCell>
                                         </textField>
                                         <popUpButton verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="cKq-FN-bz7" userLabel="FormatPopUp">
-                                            <rect key="frame" x="79" y="60" width="248" height="25"/>
+                                            <rect key="frame" x="79" y="20" width="248" height="25"/>
                                             <popUpButtonCell key="cell" type="push" title="Unspecified" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="YaM-uH-eVC" id="CWa-Bb-JU1">
                                                 <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
                                                 <font key="font" metaFont="menu"/>
@@ -515,60 +546,24 @@
                                                 <action selector="selectFormat:" target="Srn-Ee-aWU" id="qK0-Sg-uKb"/>
                                             </connections>
                                         </popUpButton>
-                                        <button verticalHuggingPriority="750" tag="2" translatesAutoresizingMaskIntoConstraints="NO" id="ARf-vp-CI4">
-                                            <rect key="frame" x="18" y="19" width="305" height="16"/>
-                                            <buttonCell key="cell" type="check" title="IOSurfaceCoreAnimationCompatibilityKey" bezelStyle="regularSquare" imagePosition="left" inset="2" id="sVx-NE-Bb1">
-                                                <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
-                                                <font key="font" metaFont="system"/>
-                                            </buttonCell>
-                                            <connections>
-                                                <action selector="clickPixelBufferButton:" target="Srn-Ee-aWU" id="wJo-IC-cqh"/>
-                                            </connections>
-                                        </button>
-                                        <button verticalHuggingPriority="750" tag="1" translatesAutoresizingMaskIntoConstraints="NO" id="LH9-lg-1Bd">
-                                            <rect key="frame" x="18" y="39" width="305" height="18"/>
-                                            <buttonCell key="cell" type="check" title="OpenGLCompatibilityKey" bezelStyle="regularSquare" imagePosition="left" inset="2" id="gzu-VF-Dkb">
-                                                <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
-                                                <font key="font" metaFont="system"/>
-                                            </buttonCell>
-                                            <connections>
-                                                <action selector="clickPixelBufferButton:" target="Srn-Ee-aWU" id="Siq-YR-ho6"/>
-                                            </connections>
-                                        </button>
                                     </subviews>
                                     <constraints>
-                                        <constraint firstAttribute="trailing" secondItem="LH9-lg-1Bd" secondAttribute="trailing" constant="10" id="J0Q-4f-WLs"/>
-                                        <constraint firstItem="ARf-vp-CI4" firstAttribute="leading" secondItem="LH9-lg-1Bd" secondAttribute="leading" id="QEx-kf-Unf"/>
                                         <constraint firstItem="cKq-FN-bz7" firstAttribute="leading" secondItem="bIp-gY-VjV" secondAttribute="trailing" constant="8" symbolic="YES" id="USL-2G-vEW"/>
-                                        <constraint firstItem="ARf-vp-CI4" firstAttribute="trailing" secondItem="LH9-lg-1Bd" secondAttribute="trailing" id="Vwg-3G-FGN"/>
                                         <constraint firstItem="cKq-FN-bz7" firstAttribute="baseline" secondItem="bIp-gY-VjV" secondAttribute="baseline" id="XBr-iU-7on"/>
-                                        <constraint firstItem="ARf-vp-CI4" firstAttribute="leading" secondItem="bIp-gY-VjV" secondAttribute="leading" id="bOu-Ye-tFF"/>
-                                        <constraint firstItem="ARf-vp-CI4" firstAttribute="top" secondItem="LH9-lg-1Bd" secondAttribute="bottom" constant="6" symbolic="YES" id="by2-QI-jcM"/>
-                                        <constraint firstItem="LH9-lg-1Bd" firstAttribute="top" secondItem="cKq-FN-bz7" secondAttribute="bottom" constant="8" symbolic="YES" id="gms-lA-Baf"/>
                                         <constraint firstAttribute="trailing" secondItem="cKq-FN-bz7" secondAttribute="trailing" constant="10" id="sug-V0-0hR"/>
-                                        <constraint firstItem="LH9-lg-1Bd" firstAttribute="centerY" secondItem="zIj-H2-c6Q" secondAttribute="centerY" id="z4R-Oi-19X"/>
-                                        <constraint firstAttribute="bottom" secondItem="ARf-vp-CI4" secondAttribute="bottom" constant="20" symbolic="YES" id="zEe-5t-Zgx"/>
                                     </constraints>
                                 </view>
                             </box>
-                            <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="xzE-3i-fJt">
-                                <rect key="frame" x="138" y="-6" width="97" height="32"/>
-                                <buttonCell key="cell" type="push" title="Fullscreen" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="GeA-v7-qOa">
-                                    <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
-                                    <font key="font" metaFont="system"/>
-                                </buttonCell>
-                                <connections>
-                                    <action selector="clickFullscreenButton:" target="Srn-Ee-aWU" id="G1K-11-h8C"/>
-                                </connections>
-                            </button>
                         </subviews>
                         <constraints>
                             <constraint firstAttribute="trailing" secondItem="pWS-HU-Pgb" secondAttribute="trailing" constant="20" id="5iQ-Ra-75z"/>
+                            <constraint firstItem="YZT-C4-Puf" firstAttribute="top" secondItem="yYF-cD-HUO" secondAttribute="top" id="6fV-WJ-CVT"/>
                             <constraint firstItem="pWS-HU-Pgb" firstAttribute="top" secondItem="G1o-Qq-lyU" secondAttribute="top" id="9lo-cW-ynC"/>
                             <constraint firstItem="xzE-3i-fJt" firstAttribute="centerX" secondItem="fNl-fN-YNo" secondAttribute="centerX" id="FSd-P2-Rp7"/>
                             <constraint firstItem="pWS-HU-Pgb" firstAttribute="leading" secondItem="F4C-xs-ROU" secondAttribute="leading" id="ZcD-hk-fVD"/>
                             <constraint firstItem="pWS-HU-Pgb" firstAttribute="trailing" secondItem="F4C-xs-ROU" secondAttribute="trailing" id="cxH-Qq-T37"/>
                             <constraint firstItem="F4C-xs-ROU" firstAttribute="baseline" secondItem="KnZ-ko-cfO" secondAttribute="baseline" id="fBM-g7-Jbr"/>
+                            <constraint firstItem="YZT-C4-Puf" firstAttribute="leading" secondItem="yYF-cD-HUO" secondAttribute="trailing" constant="8" symbolic="YES" id="fiL-3k-9BL"/>
                             <constraint firstItem="xzE-3i-fJt" firstAttribute="top" secondItem="fNl-fN-YNo" secondAttribute="bottom" constant="20" symbolic="YES" id="mv3-f0-csy"/>
                             <constraint firstItem="pWS-HU-Pgb" firstAttribute="leading" secondItem="G1o-Qq-lyU" secondAttribute="trailing" constant="8" symbolic="YES" id="oWj-er-ZHk"/>
                         </constraints>
@@ -608,8 +603,7 @@
                 <outlet property="bufferingPopUp" destination="F4C-xs-ROU" id="3tV-55-ItP"/>
                 <outlet property="formatPopUp" destination="cKq-FN-bz7" id="E0v-uY-v6N"/>
                 <outlet property="layerClassPopUp" destination="pWS-HU-Pgb" id="9zd-jL-2C1"/>
-                <outlet property="pixelBufferIOSurfaceCoreAnimationCompatibilityButton" destination="ARf-vp-CI4" id="9sL-eR-DSb"/>
-                <outlet property="pixelBufferOpenGLCompatibilityButton" destination="LH9-lg-1Bd" id="r3k-tw-ZX6"/>
+                <outlet property="videoFilePopUp" destination="YZT-C4-Puf" id="Yrj-TX-iRO"/>
                 <outlet property="videoHolder" destination="qM8-eV-Fi9" id="dRp-oD-n40"/>
                 <outlet property="videoModel" destination="ixM-SG-RzP" id="9T6-8S-bfw"/>
                 <outlet property="view" destination="EiT-Mj-1SZ" id="tQV-9O-DaN"/>

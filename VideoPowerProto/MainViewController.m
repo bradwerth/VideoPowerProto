@@ -16,11 +16,10 @@
 
 @property (strong) IBOutlet VideoModel* videoModel;
 
+@property (strong) IBOutlet NSPopUpButton* videoFilePopUp;
 @property (strong) IBOutlet NSPopUpButton* layerClassPopUp;
 @property (strong) IBOutlet NSPopUpButton* bufferingPopUp;
 @property (strong) IBOutlet NSPopUpButton* formatPopUp;
-@property (strong) IBOutlet NSButton* pixelBufferOpenGLCompatibilityButton;
-@property (strong) IBOutlet NSButton* pixelBufferIOSurfaceCoreAnimationCompatibilityButton;
 
 @property (strong) IBOutlet VideoHolder* videoHolder;
 @end
@@ -44,35 +43,41 @@
   NSWindow* window = self.view.window;
   window.contentView.wantsLayer = YES;
 
+  // Populate the video file menu.
+  [self populateVideoFileMenu];
+
   // Listen to all the properties that might change in our model.
+  [self.videoModel addObserver:self forKeyPath:@"videoFile" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"layerClass" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"buffering" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"format" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"pixelBuffer" options:0 context:nil];
-  [self.videoModel addObserver:self forKeyPath:@"videoFilename" options:0 context:nil];
 
   // Setup our initial video.
   [self clearVideo];
 }
 
 - (void)dealloc {
+  [_videoFilePopUp release];
   [_layerClassPopUp release];
   [_bufferingPopUp release];
   [_formatPopUp release];
-  [_pixelBufferOpenGLCompatibilityButton release];
-  [_pixelBufferIOSurfaceCoreAnimationCompatibilityButton release];
   [_videoHolder release];
 
   [videoLayer release];
   [backgroundLayer release];
   [oldSubviews release];
   [videoDecoder release];
+  [self.videoModel removeObserver:self forKeyPath:@"videoFile"];
   [self.videoModel removeObserver:self forKeyPath:@"layerClass"];
   [self.videoModel removeObserver:self forKeyPath:@"buffering"];
   [self.videoModel removeObserver:self forKeyPath:@"format"];
   [self.videoModel removeObserver:self forKeyPath:@"pixelBuffer"];
-  [self.videoModel removeObserver:self forKeyPath:@"videoFilename"];
   [super dealloc];
+}
+
+- (IBAction)selectVideoFile:(NSPopUpButton*)sender {
+  self.videoModel.videoFile = sender.titleOfSelectedItem;
 }
 
 - (IBAction)selectLayerClass:(NSPopUpButton*)sender {
@@ -87,12 +92,6 @@
   self.videoModel.format = sender.selectedTag;
 }
 
-- (IBAction)clickPixelBufferButton:(NSButton*)sender {
-  bool isOn = (sender.state == NSControlStateValueOn);
-  PixelBuffer oldValue = [self videoModel].pixelBuffer;
-  self.videoModel.pixelBuffer = (isOn ? (oldValue | sender.tag) : (oldValue & ~sender.tag));
-}
-
 - (IBAction)clickFullscreenButton:(NSButton*)sender {
   [self.view.window toggleFullScreen:sender];
 }
@@ -103,6 +102,16 @@
   // passing a completion block to the decoder.
   [self clearVideo];
   [self resetVideo];
+}
+
+- (void)populateVideoFileMenu {
+  [self.videoFilePopUp removeAllItems];
+
+  NSBundle* bundle = [NSBundle mainBundle];
+  NSArray* urls = [bundle URLsForResourcesWithExtension:nil subdirectory:@"Media"];
+  for (NSURL* url in urls) {
+    [self.videoFilePopUp addItemWithTitle:url.lastPathComponent];
+  }
 }
 
 - (void)clearVideo {
