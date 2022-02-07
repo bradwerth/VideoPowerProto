@@ -126,7 +126,7 @@
 		A258AE7A26702F0200DA4405 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1250;
+				LastUpgradeCheck = 1310;
 				TargetAttributes = {
 					A258AE8126702F0200DA4405 = {
 						CreatedOnToolsVersion = 12.5;

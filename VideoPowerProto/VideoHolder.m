@@ -113,9 +113,10 @@ const int32_t kStoredBufferMax = 10;
     //NSLog(@"recreateContentLayer AVSampleBufferDisplayLayer.");
     avLayer = [[AVSampleBufferDisplayLayer layer] retain];
     CMTimebaseRef timebase;
-    CMTimebaseCreateWithMasterClock(kCFAllocatorDefault, CMClockGetHostTimeClock(), &timebase);
+    CMTimebaseCreateWithSourceClock(kCFAllocatorDefault, CMClockGetHostTimeClock(), &timebase);
     CMTimebaseSetRate(timebase, 1.0f);
     avLayer.controlTimebase = timebase;
+    CFRelease(timebase);
     contentLayer = avLayer;
   }
 
@@ -368,8 +369,19 @@ const int32_t kStoredBufferMax = 10;
     return NO;
   }
   CFMutableDictionaryRef sample0Dictionary = (__bridge CFMutableDictionaryRef)(CFArrayGetValueAtIndex(attachmentsArray, 0));
+
+  // There are two ways to make the sample appear immediately. They don't appear
+  // to differ in effect, but we could make them into a toggle-able checkbox
+  // if we wanted to.
+  // 1) This is the display immediately method.
   CFDictionarySetValue(sample0Dictionary, kCMSampleAttachmentKey_DisplayImmediately,
                        kCFBooleanTrue);
+
+  // 2) This is the time-is-now method.
+  /*
+  CMTime nowTime = CMTimebaseGetTime(avLayer.controlTimebase);
+  CMSampleBufferSetOutputPresentationTimeStamp(sampleBuffer, nowTime);
+  */
 
   [avLayer enqueueSampleBuffer:sampleBuffer];
   return YES;
