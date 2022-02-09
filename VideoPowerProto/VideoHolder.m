@@ -22,7 +22,8 @@
   // frameSurface is the image content displayed by the contentLayer, if we are
   // being fed frames directly.
   IOSurfaceRef frameSurface;
-  
+
+  bool hasOutputBufferFromModel;
   VideoModel* lastModel;
   float aspectRatio;
   CGFloat trackWidth;
@@ -82,6 +83,8 @@ const int32_t kStoredBufferMax = 10;
   VideoModel *oldModel = lastModel;
   lastModel = [model copy];
   [oldModel release];
+
+  hasOutputBufferFromModel = false;
 
   [self recreateContentLayer];
 }
@@ -344,9 +347,13 @@ const int32_t kStoredBufferMax = 10;
     return NO;
   }
 
-  CMVideoFormatDescriptionRef formatDescription;
-  OSStatus error = CMVideoFormatDescriptionCreateForImageBuffer(kCFAllocatorDefault, pixelBuffer,
-                                                                  &formatDescription);
+  /*
+  // Transform the pixel buffer a bit.
+  CVBufferSetAttachment(pixelBuffer, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_ITU_R_2100_HLG, kCVAttachmentMode_ShouldPropagate);
+  */
+
+  CMVideoFormatDescriptionRef format;
+  OSStatus error = CMVideoFormatDescriptionCreateForImageBuffer(kCFAllocatorDefault, pixelBuffer, &format);
   if (error != noErr) {
     NSLog(@"Couldn't determine format from pixel buffer, with error %d.", error);
     return NO;
@@ -354,7 +361,21 @@ const int32_t kStoredBufferMax = 10;
 
   CMSampleBufferRef sampleBuffer = nil;
   error = CMSampleBufferCreateReadyWithImageBuffer(
-      kCFAllocatorDefault, pixelBuffer, formatDescription, &kCMTimingInfoInvalid, &sampleBuffer);
+      kCFAllocatorDefault, pixelBuffer, format, &kCMTimingInfoInvalid, &sampleBuffer);
+
+  if (!hasOutputBufferFromModel) {
+    CFDictionaryRef surfaceProps = IOSurfaceCopyAllValues(surface);
+    NSLog(@"IOSurface props are %@.", surfaceProps);
+    CFRelease(surfaceProps);
+
+    NSLog(@"Pixel buffer is %@.", pixelBuffer);
+
+    NSLog(@"Format is %@.", format);
+
+    NSLog(@"Recreated buffer is %@.", sampleBuffer);
+    hasOutputBufferFromModel = true;
+  }
+
   if (error != noErr) {
     NSLog(@"Couldn't recreate a CMSampleBuffer from the pixel buffer.");
     return NO;
@@ -363,17 +384,17 @@ const int32_t kStoredBufferMax = 10;
   // Since we don't have timing information for the sample, before we enqueue
   // it, we attach an attribute that specifies that the sample should be played
   // immediately.
+
+  // There are two ways to make the sample appear immediately. They don't appear
+  // to differ in effect, but we could make them into a toggle-able checkbox
+  // if we wanted to.
+  // 1) This is the display immediately method.
   CFArrayRef attachmentsArray = CMSampleBufferGetSampleAttachmentsArray(sampleBuffer, YES);
   if (!attachmentsArray || CFArrayGetCount(attachmentsArray) == 0) {
     NSLog(@"Newly created CMSampleBuffer doesn't have an attachments array.");
     return NO;
   }
   CFMutableDictionaryRef sample0Dictionary = (__bridge CFMutableDictionaryRef)(CFArrayGetValueAtIndex(attachmentsArray, 0));
-
-  // There are two ways to make the sample appear immediately. They don't appear
-  // to differ in effect, but we could make them into a toggle-able checkbox
-  // if we wanted to.
-  // 1) This is the display immediately method.
   CFDictionarySetValue(sample0Dictionary, kCMSampleAttachmentKey_DisplayImmediately,
                        kCFBooleanTrue);
 

@@ -239,8 +239,70 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     }
 
     CMFormatDescriptionRef format = (__bridge CMFormatDescriptionRef)firstVideoTrack.formatDescriptions[0];
+
+    CMFormatDescriptionRef modifiedFormat = nil;
+    CFDictionaryRef outputProps = nil;
+
+    /*
+    // Make a new format based on the old format, that changes some extensions.
+    FourCharCode codec = CMFormatDescriptionGetMediaSubType(format);
+    CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions(format);
+    CFDictionaryRef extensions = CMFormatDescriptionGetExtensions(format);
+
+    CFMutableDictionaryRef modifiedExtensions = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, extensions);
+
+    // Force the HLG transfer function.
+    CFDictionaryReplaceValue(modifiedExtensions, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_ITU_R_2100_HLG);
+
+    CMFormatDescriptionRef modifiedFormat;
+    CMVideoFormatDescriptionCreate(kCFAllocatorDefault, codec, dimensions.width, dimensions.height, modifiedExtensions, &modifiedFormat);
+
+    if (modifiedExtensions) {
+      CFRelease(modifiedExtensions);
+    }
+    */
+
+    /*
+    // We can explictly set the output pixel format here.
+    SInt32 pixelFormatTypeValue = kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange;
+    CFNumberRef pixelFormatTypeNumber = CFNumberCreate(kCFAllocatorDefault,
+        kCFNumberSInt32Type, &pixelFormatTypeValue);
+    const void* outputKeys[] = {kCVPixelBufferPixelFormatTypeKey};
+    const void* outputValues[] = {pixelFormatTypeNumber};
+    outputProps = CFDictionaryCreate(kCFAllocatorDefault,
+        outputKeys, outputValues, 1, &kCFTypeDictionaryKeyCallBacks,
+        &kCFTypeDictionaryValueCallBacks);
+    if (pixelFormatTypeNumber) {
+      CFRelease(pixelFormatTypeNumber);
+    }
+    */
+
+    /*
+    // We can explictly set the surface transfer function here.
+    CFDictionaryRef ioSurfaceProps;
+    const void* outputKeys[] = {kCVPixelBufferIOSurfacePropertiesKey};
+    const void* outputValues[] = {ioSurfaceProps};
+    outputProps = CFDictionaryCreate(kCFAllocatorDefault,
+        outputKeys, outputValues, 1, &kCFTypeDictionaryKeyCallBacks,
+        &kCFTypeDictionaryValueCallBacks);
+    if (ioSurfaceProps) {
+      CFRelease(ioSurfaceProps);
+    }
+    */
+
+    if (modifiedFormat) {
+      format = modifiedFormat;
+    }
+
     VTDecompressionOutputCallbackRecord callback = {DecompressorCallback, self};
-    OSStatus error = VTDecompressionSessionCreate(kCFAllocatorDefault, format, NULL, NULL, &callback, &decompressor);
+    OSStatus error = VTDecompressionSessionCreate(kCFAllocatorDefault, format, NULL, outputProps, &callback, &decompressor);
+
+    if (modifiedFormat) {
+      CFRelease(modifiedFormat);
+    }
+    if (outputProps) {
+      CFRelease(outputProps);
+    }
 
     if (!decompressor) {
       NSLog(@"Failed to create decompression session with error %d.", error);
@@ -248,6 +310,29 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
       return;
     }
     assert(error == noErr);
+
+    // Set some properties on the session.
+    CFDictionaryRef sessionProps = nil;
+    error = VTSessionCopySupportedPropertyDictionary(decompressor, &sessionProps);
+    //NSLog(@"Decompressor props are %@.\n", sessionProps);
+    CFRelease(sessionProps);
+
+    /*
+    error = VTSessionSetProperty(
+        decompressor,
+        kVTDecompressionPropertyKey_PropagatePerFrameHDRDisplayMetadata,
+        kCFBooleanTrue);
+    CFBooleanRef isUsingHDR = nil;
+    error = VTSessionCopyProperty(
+        decompressor,
+        kVTDecompressionPropertyKey_PropagatePerFrameHDRDisplayMetadata,
+        kCFAllocatorDefault,
+        &isUsingHDR);
+    NSLog(@"Is Using HDR? %@.", isUsingHDR);
+    if (isUsingHDR) {
+      CFRelease(isUsingHDR);
+    }
+    */
   }
 
   CFRetain(decompressor);
