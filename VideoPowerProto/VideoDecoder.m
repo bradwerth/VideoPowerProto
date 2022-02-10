@@ -254,7 +254,6 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     // Force the HLG transfer function.
     CFDictionaryReplaceValue(modifiedExtensions, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_ITU_R_2100_HLG);
 
-    CMFormatDescriptionRef modifiedFormat;
     CMVideoFormatDescriptionCreate(kCFAllocatorDefault, codec, dimensions.width, dimensions.height, modifiedExtensions, &modifiedFormat);
 
     if (modifiedExtensions) {
@@ -262,34 +261,43 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     }
     */
 
-    /*
+    static const long OUTPUT_KEY_VALUE_MAX = 5;
+    const void* outputKeys[OUTPUT_KEY_VALUE_MAX];
+    const void* outputValues[OUTPUT_KEY_VALUE_MAX];
+    long keyValueCount = 0;
+
+    CFNumberRef pixelFormatTypeNumber = NULL;
+    CFDictionaryRef ioSurfaceProps = NULL;
+
     // We can explictly set the output pixel format here.
     SInt32 pixelFormatTypeValue = kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange;
-    CFNumberRef pixelFormatTypeNumber = CFNumberCreate(kCFAllocatorDefault,
-        kCFNumberSInt32Type, &pixelFormatTypeValue);
-    const void* outputKeys[] = {kCVPixelBufferPixelFormatTypeKey};
-    const void* outputValues[] = {pixelFormatTypeNumber};
-    outputProps = CFDictionaryCreate(kCFAllocatorDefault,
-        outputKeys, outputValues, 1, &kCFTypeDictionaryKeyCallBacks,
-        &kCFTypeDictionaryValueCallBacks);
+    pixelFormatTypeNumber = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &pixelFormatTypeValue);
+    outputKeys[keyValueCount] = kCVPixelBufferPixelFormatTypeKey;
+    outputValues[keyValueCount] = pixelFormatTypeNumber;
+    keyValueCount++;
+
+    /*
+    // We can explictly set the color space here. This doesn't work.
+    const void* ioSurfaceKeys[] = {CFSTR("IOSurfaceColorSpace")};
+    const void* ioSurfaceValues[] = {kCGColorSpaceITUR_2100_HLG};
+    ioSurfaceProps = CFDictionaryCreate(kCFAllocatorDefault, ioSurfaceKeys, ioSurfaceValues, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    outputKeys[keyValueCount] = kCVPixelBufferIOSurfacePropertiesKey;
+    outputValues[keyValueCount] = ioSurfaceProps;
+    keyValueCount++;
+    */
+
+    // Actually create the outputProps.
+    outputProps = CFDictionaryCreate(kCFAllocatorDefault, outputKeys, outputValues, keyValueCount, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+
+    // Release any memory we might have created earlier.
     if (pixelFormatTypeNumber) {
       CFRelease(pixelFormatTypeNumber);
     }
-    */
-
-    /*
-    // We can explictly set the surface transfer function here.
-    CFDictionaryRef ioSurfaceProps;
-    const void* outputKeys[] = {kCVPixelBufferIOSurfacePropertiesKey};
-    const void* outputValues[] = {ioSurfaceProps};
-    outputProps = CFDictionaryCreate(kCFAllocatorDefault,
-        outputKeys, outputValues, 1, &kCFTypeDictionaryKeyCallBacks,
-        &kCFTypeDictionaryValueCallBacks);
     if (ioSurfaceProps) {
       CFRelease(ioSurfaceProps);
     }
-    */
-
+    
+    // If we modified the format, switch to it.
     if (modifiedFormat) {
       format = modifiedFormat;
     }
@@ -297,6 +305,7 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     VTDecompressionOutputCallbackRecord callback = {DecompressorCallback, self};
     OSStatus error = VTDecompressionSessionCreate(kCFAllocatorDefault, format, NULL, outputProps, &callback, &decompressor);
 
+    // Release the memory we needed to set up the decompressor.
     if (modifiedFormat) {
       CFRelease(modifiedFormat);
     }
@@ -311,11 +320,25 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     }
     assert(error == noErr);
 
-    // Set some properties on the session.
+    /*
+    // See which properties can be modified in the session.
     CFDictionaryRef sessionProps = nil;
     error = VTSessionCopySupportedPropertyDictionary(decompressor, &sessionProps);
-    //NSLog(@"Decompressor props are %@.\n", sessionProps);
+    NSLog(@"Decompressor props are %@.\n", sessionProps);
     CFRelease(sessionProps);
+    */
+
+    // Force a color conversion to HLG.
+    CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2100_HLG);
+    CFDataRef iccProfile = CGColorSpaceCopyICCData(colorSpace);
+    const void* pixelTransferKeys[] = {kVTPixelTransferPropertyKey_DestinationICCProfile};
+    const void* pixelTransferValues[] = {iccProfile};
+    CFDictionaryRef pixelTransferProps = CFDictionaryCreate(kCFAllocatorDefault, pixelTransferKeys, pixelTransferValues, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    error = VTSessionSetProperty(decompressor, kVTDecompressionPropertyKey_PixelTransferProperties, pixelTransferProps);
+    assert(error == noErr);
+    CFRelease(colorSpace);
+    CFRelease(iccProfile);
+    CFRelease(pixelTransferProps);
 
     /*
     error = VTSessionSetProperty(
