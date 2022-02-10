@@ -22,21 +22,12 @@ typedef NS_ENUM(NSInteger, Buffering) {
   BufferingRecreated,
 };
 
-// Keep these values synced with the Tags used in the xib.
-typedef NS_ENUM(NSInteger, Format) {
-  FormatUnspecified,
-  Format422YpCbCr8,
-  Format420YpCbCr8BiPlanarVideoRange,
-  Format420YpCbCr8BiPlanarFullRange,
-};
-
 @interface VideoModel : NSObject <NSCopying>
 
 // These properties should be copied in the implementation of copyWithZone.
 @property (copy) NSString* videoFile;
 @property LayerClass layerClass;
 @property Buffering buffering;
-@property Format format;
 
 - (nonnull id)copyWithZone:(nullable NSZone*)zone;
 

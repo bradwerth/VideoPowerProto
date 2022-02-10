@@ -496,27 +496,6 @@ void frameTimerCallback(void* context) {
       // Always specify IOSurface key. Using a blank dictionary lets the OS decide
       // the best way to allocate IOSurfaces.
       [dict setValue:[NSDictionary dictionary] forKey:(__bridge NSString*)kCVPixelBufferIOSurfacePropertiesKey];
-
-      // Handle pixel format keys.
-      OSType pixelFormat;
-      switch (lastModel.format) {
-        case FormatUnspecified:
-          pixelFormat = 0;
-          break;
-        case Format422YpCbCr8:
-          pixelFormat = kCVPixelFormatType_422YpCbCr8;
-          break;
-        case Format420YpCbCr8BiPlanarVideoRange:
-          pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
-          break;
-        case Format420YpCbCr8BiPlanarFullRange:
-          pixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarFullRange;
-          break;
-      }
-      NSNumber* pixelFormatNumber = [NSNumber numberWithInt:pixelFormat];
-      if (pixelFormat != 0) {
-        [dict setValue:pixelFormatNumber forKey:(__bridge NSString*)kCVPixelBufferPixelFormatTypeKey];
-      }
     }
 
     assetOutput = [[AVAssetReaderTrackOutput alloc] initWithTrack:firstVideoTrack outputSettings:dict];

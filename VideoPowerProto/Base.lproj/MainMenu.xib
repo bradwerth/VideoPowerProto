@@ -501,7 +501,7 @@
                                     <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                 </textFieldCell>
                             </textField>
-                            <popUpButton verticalHuggingPriority="750" misplaced="YES" verifyAmbiguity="off" translatesAutoresizingMaskIntoConstraints="NO" id="YZT-C4-Puf" userLabel="VideoFilePopUp">
+                            <popUpButton verticalHuggingPriority="750" verifyAmbiguity="off" translatesAutoresizingMaskIntoConstraints="NO" id="YZT-C4-Puf" userLabel="VideoFilePopUp">
                                 <rect key="frame" x="100" y="186" width="257" height="25"/>
                                 <popUpButtonCell key="cell" type="push" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" id="PdA-MV-XOq">
                                     <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
@@ -512,60 +512,19 @@
                                     <action selector="selectVideoFile:" target="Srn-Ee-aWU" id="Kfa-Cy-E8I"/>
                                 </connections>
                             </popUpButton>
-                            <box title="Pixel Buffer Attributes" id="fNl-fN-YNo">
-                                <rect key="frame" x="17" y="50" width="339" height="74"/>
-                                <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                <view key="contentView" id="zIj-H2-c6Q">
-                                    <rect key="frame" x="3" y="3" width="333" height="56"/>
-                                    <autoresizingMask key="autoresizingMask" widthSizable="YES" heightSizable="YES"/>
-                                    <subviews>
-                                        <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="bIp-gY-VjV">
-                                            <rect key="frame" x="18" y="27" width="58" height="16"/>
-                                            <autoresizingMask key="autoresizingMask" flexibleMaxX="YES" flexibleMinY="YES"/>
-                                            <textFieldCell key="cell" lineBreakMode="clipping" alignment="right" title="Format:" id="KfL-Ah-Bb1">
-                                                <font key="font" usesAppearanceFont="YES"/>
-                                                <color key="textColor" name="labelColor" catalog="System" colorSpace="catalog"/>
-                                                <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
-                                            </textFieldCell>
-                                        </textField>
-                                        <popUpButton verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="cKq-FN-bz7" userLabel="FormatPopUp">
-                                            <rect key="frame" x="79" y="20" width="248" height="25"/>
-                                            <popUpButtonCell key="cell" type="push" title="Unspecified" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="YaM-uH-eVC" id="CWa-Bb-JU1">
-                                                <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
-                                                <font key="font" metaFont="menu"/>
-                                                <menu key="menu" id="XHP-Ge-RhM">
-                                                    <items>
-                                                        <menuItem title="Unspecified" state="on" id="YaM-uH-eVC"/>
-                                                        <menuItem title="422YpCbCr8" id="2Ia-zB-FQ6"/>
-                                                        <menuItem title="420YpCbCr8BiPlanarVideo" tag="1" id="ElC-eA-bgK"/>
-                                                        <menuItem title="420YpCbCr8BiPlanarFullRange" tag="1" id="2mr-mD-z28"/>
-                                                    </items>
-                                                </menu>
-                                            </popUpButtonCell>
-                                            <connections>
-                                                <action selector="selectFormat:" target="Srn-Ee-aWU" id="qK0-Sg-uKb"/>
-                                            </connections>
-                                        </popUpButton>
-                                    </subviews>
-                                    <constraints>
-                                        <constraint firstItem="cKq-FN-bz7" firstAttribute="leading" secondItem="bIp-gY-VjV" secondAttribute="trailing" constant="8" symbolic="YES" id="USL-2G-vEW"/>
-                                        <constraint firstItem="cKq-FN-bz7" firstAttribute="baseline" secondItem="bIp-gY-VjV" secondAttribute="baseline" id="XBr-iU-7on"/>
-                                        <constraint firstAttribute="trailing" secondItem="cKq-FN-bz7" secondAttribute="trailing" constant="10" id="sug-V0-0hR"/>
-                                    </constraints>
-                                </view>
-                            </box>
                         </subviews>
                         <constraints>
-                            <constraint firstAttribute="trailing" secondItem="pWS-HU-Pgb" secondAttribute="trailing" constant="20" id="5iQ-Ra-75z"/>
-                            <constraint firstItem="YZT-C4-Puf" firstAttribute="top" secondItem="yYF-cD-HUO" secondAttribute="top" id="6fV-WJ-CVT"/>
-                            <constraint firstItem="pWS-HU-Pgb" firstAttribute="top" secondItem="G1o-Qq-lyU" secondAttribute="top" id="9lo-cW-ynC"/>
-                            <constraint firstItem="xzE-3i-fJt" firstAttribute="centerX" secondItem="fNl-fN-YNo" secondAttribute="centerX" id="FSd-P2-Rp7"/>
-                            <constraint firstItem="pWS-HU-Pgb" firstAttribute="leading" secondItem="F4C-xs-ROU" secondAttribute="leading" id="ZcD-hk-fVD"/>
-                            <constraint firstItem="pWS-HU-Pgb" firstAttribute="trailing" secondItem="F4C-xs-ROU" secondAttribute="trailing" id="cxH-Qq-T37"/>
-                            <constraint firstItem="F4C-xs-ROU" firstAttribute="baseline" secondItem="KnZ-ko-cfO" secondAttribute="baseline" id="fBM-g7-Jbr"/>
-                            <constraint firstItem="YZT-C4-Puf" firstAttribute="leading" secondItem="yYF-cD-HUO" secondAttribute="trailing" constant="8" symbolic="YES" id="fiL-3k-9BL"/>
-                            <constraint firstItem="xzE-3i-fJt" firstAttribute="top" secondItem="fNl-fN-YNo" secondAttribute="bottom" constant="20" symbolic="YES" id="mv3-f0-csy"/>
-                            <constraint firstItem="pWS-HU-Pgb" firstAttribute="leading" secondItem="G1o-Qq-lyU" secondAttribute="trailing" constant="8" symbolic="YES" id="oWj-er-ZHk"/>
+                            <constraint firstItem="pWS-HU-Pgb" firstAttribute="trailing" secondItem="F4C-xs-ROU" secondAttribute="trailing" id="4tw-eo-4cE"/>
+                            <constraint firstItem="YZT-C4-Puf" firstAttribute="top" secondItem="yYF-cD-HUO" secondAttribute="top" id="9DL-I3-Mtk"/>
+                            <constraint firstItem="F4C-xs-ROU" firstAttribute="baseline" secondItem="KnZ-ko-cfO" secondAttribute="baseline" id="JPu-da-K7q"/>
+                            <constraint firstItem="pWS-HU-Pgb" firstAttribute="top" secondItem="G1o-Qq-lyU" secondAttribute="top" id="NcN-b6-6ON"/>
+                            <constraint firstAttribute="trailing" secondItem="YZT-C4-Puf" secondAttribute="trailing" constant="20" symbolic="YES" id="Nes-f9-2J6"/>
+                            <constraint firstItem="YZT-C4-Puf" firstAttribute="leading" secondItem="pWS-HU-Pgb" secondAttribute="leading" id="QFC-Uf-MGD"/>
+                            <constraint firstItem="xzE-3i-fJt" firstAttribute="top" secondItem="F4C-xs-ROU" secondAttribute="bottom" constant="98" id="SSb-F6-1op"/>
+                            <constraint firstItem="pWS-HU-Pgb" firstAttribute="leading" secondItem="F4C-xs-ROU" secondAttribute="leading" id="bPZ-um-446"/>
+                            <constraint firstItem="YZT-C4-Puf" firstAttribute="leading" secondItem="yYF-cD-HUO" secondAttribute="trailing" constant="8" symbolic="YES" id="ezJ-78-gYF"/>
+                            <constraint firstItem="xzE-3i-fJt" firstAttribute="centerX" secondItem="M7a-b3-TyO" secondAttribute="centerX" id="woV-mL-RT2"/>
+                            <constraint firstItem="YZT-C4-Puf" firstAttribute="trailing" secondItem="pWS-HU-Pgb" secondAttribute="trailing" id="yvT-g3-hRl"/>
                         </constraints>
                     </customView>
                     <customView id="VqC-s8-Avr" customClass="ColoredBackgroundView">
@@ -580,10 +539,10 @@
                             </customView>
                         </subviews>
                         <constraints>
-                            <constraint firstAttribute="trailing" secondItem="qM8-eV-Fi9" secondAttribute="trailing" constant="20" symbolic="YES" id="5Xu-uo-SkY"/>
-                            <constraint firstItem="qM8-eV-Fi9" firstAttribute="top" secondItem="VqC-s8-Avr" secondAttribute="top" constant="20" symbolic="YES" id="JJM-Rr-wMa"/>
-                            <constraint firstAttribute="bottom" secondItem="qM8-eV-Fi9" secondAttribute="bottom" constant="20" symbolic="YES" id="S4b-u0-8GC"/>
-                            <constraint firstItem="qM8-eV-Fi9" firstAttribute="leading" secondItem="VqC-s8-Avr" secondAttribute="leading" constant="20" symbolic="YES" id="fzv-GL-82N"/>
+                            <constraint firstItem="qM8-eV-Fi9" firstAttribute="top" secondItem="VqC-s8-Avr" secondAttribute="top" constant="20" symbolic="YES" id="IyE-pO-EbL"/>
+                            <constraint firstAttribute="bottom" secondItem="qM8-eV-Fi9" secondAttribute="bottom" constant="20" symbolic="YES" id="ftx-Hh-ufk"/>
+                            <constraint firstItem="qM8-eV-Fi9" firstAttribute="leading" secondItem="VqC-s8-Avr" secondAttribute="leading" constant="20" symbolic="YES" id="gEy-Mr-aCQ"/>
+                            <constraint firstAttribute="trailing" secondItem="qM8-eV-Fi9" secondAttribute="trailing" constant="20" symbolic="YES" id="pfP-V7-ibt"/>
                         </constraints>
                         <userDefinedRuntimeAttributes>
                             <userDefinedRuntimeAttribute type="color" keyPath="color">
@@ -601,7 +560,6 @@
         <viewController id="Srn-Ee-aWU" customClass="MainViewController">
             <connections>
                 <outlet property="bufferingPopUp" destination="F4C-xs-ROU" id="3tV-55-ItP"/>
-                <outlet property="formatPopUp" destination="cKq-FN-bz7" id="E0v-uY-v6N"/>
                 <outlet property="layerClassPopUp" destination="pWS-HU-Pgb" id="9zd-jL-2C1"/>
                 <outlet property="videoFilePopUp" destination="YZT-C4-Puf" id="Yrj-TX-iRO"/>
                 <outlet property="videoHolder" destination="qM8-eV-Fi9" id="dRp-oD-n40"/>

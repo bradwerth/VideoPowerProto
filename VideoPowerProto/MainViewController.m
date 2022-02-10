@@ -19,7 +19,6 @@
 @property (strong) IBOutlet NSPopUpButton* videoFilePopUp;
 @property (strong) IBOutlet NSPopUpButton* layerClassPopUp;
 @property (strong) IBOutlet NSPopUpButton* bufferingPopUp;
-@property (strong) IBOutlet NSPopUpButton* formatPopUp;
 
 @property (strong) IBOutlet VideoHolder* videoHolder;
 @end
@@ -50,7 +49,6 @@
   [self.videoModel addObserver:self forKeyPath:@"videoFile" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"layerClass" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"buffering" options:0 context:nil];
-  [self.videoModel addObserver:self forKeyPath:@"format" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"pixelBuffer" options:0 context:nil];
 
   // Setup our initial video.
@@ -61,7 +59,6 @@
   [_videoFilePopUp release];
   [_layerClassPopUp release];
   [_bufferingPopUp release];
-  [_formatPopUp release];
   [_videoHolder release];
 
   [videoLayer release];
@@ -71,7 +68,6 @@
   [self.videoModel removeObserver:self forKeyPath:@"videoFile"];
   [self.videoModel removeObserver:self forKeyPath:@"layerClass"];
   [self.videoModel removeObserver:self forKeyPath:@"buffering"];
-  [self.videoModel removeObserver:self forKeyPath:@"format"];
   [self.videoModel removeObserver:self forKeyPath:@"pixelBuffer"];
   [super dealloc];
 }
@@ -86,10 +82,6 @@
 
 - (IBAction)selectBuffering:(NSPopUpButton*)sender {
   self.videoModel.buffering = sender.selectedTag;
-}
-
-- (IBAction)selectFormat:(NSPopUpButton*)sender {
-  self.videoModel.format = sender.selectedTag;
 }
 
 - (IBAction)clickFullscreenButton:(NSButton*)sender {

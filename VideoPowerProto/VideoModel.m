@@ -15,7 +15,6 @@
   model.videoFile = self.videoFile;
   model.layerClass = self.layerClass;
   model.buffering = self.buffering;
-  model.format = self.format;
   return model;
 }
 
