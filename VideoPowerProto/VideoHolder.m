@@ -251,6 +251,13 @@ const int32_t kStoredBufferMax = 10;
       [avLayer flush];
     }
 
+    if (!hasOutputBufferFromModel) {
+      NSLog(@"Format is %@.", format);
+
+      NSLog(@"Direct buffer is %@.", buffer);
+      hasOutputBufferFromModel = true;
+    }
+
     [avLayer enqueueSampleBuffer:buffer];
 
     // Don't ask for more buffers if the layer can't handle them.
@@ -359,6 +366,38 @@ const int32_t kStoredBufferMax = 10;
     return NO;
   }
 
+  CMFormatDescriptionRef modifiedFormat = NULL;
+
+  // Make a new format based on the old format, that changes some extensions.
+  FourCharCode codec = CMFormatDescriptionGetMediaSubType(format);
+  CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions(format);
+  CFDictionaryRef extensions = CMFormatDescriptionGetExtensions(format);
+
+  CFMutableDictionaryRef modifiedExtensions = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, extensions);
+
+  // Force the ITU color primaries
+  CFDictionarySetValue(modifiedExtensions, kCVImageBufferColorPrimariesKey, kCVImageBufferColorPrimaries_ITU_R_2020);
+
+  // Force the HLG transfer function.
+  CFDictionarySetValue(modifiedExtensions, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_ITU_R_2100_HLG);
+
+  // Remove the ICC profile.
+  CFDictionaryRemoveValue(modifiedExtensions, kCVImageBufferICCProfileKey);
+
+  if (!hasOutputBufferFromModel) {
+    NSLog(@"Modified extensions are %@.", modifiedExtensions);
+  }
+
+  CMVideoFormatDescriptionCreate(kCFAllocatorDefault, codec, dimensions.width, dimensions.height, modifiedExtensions, &modifiedFormat);
+
+  if (modifiedExtensions) {
+    CFRelease(modifiedExtensions);
+  }
+  
+  if (modifiedFormat) {
+    format = modifiedFormat;
+  }
+
   CMSampleBufferRef sampleBuffer = nil;
   error = CMSampleBufferCreateReadyWithImageBuffer(
       kCFAllocatorDefault, pixelBuffer, format, &kCMTimingInfoInvalid, &sampleBuffer);
@@ -374,6 +413,10 @@ const int32_t kStoredBufferMax = 10;
 
     NSLog(@"Recreated buffer is %@.", sampleBuffer);
     hasOutputBufferFromModel = true;
+  }
+
+  if (modifiedFormat) {
+    CFRelease(modifiedFormat);
   }
 
   if (error != noErr) {

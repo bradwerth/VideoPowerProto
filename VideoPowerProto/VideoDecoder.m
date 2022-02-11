@@ -192,9 +192,9 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     }
 
     // Track property is loaded, so we can get the video tracks without blocking.
-    firstVideoTrack = [[[asset tracksWithMediaType:AVMediaTypeVideo] firstObject] retain];
+    firstVideoTrack = [[[asset tracksWithMediaCharacteristic:AVMediaCharacteristicContainsHDRVideo] firstObject] retain];
     if (!firstVideoTrack) {
-      NSLog(@"No video track.");
+      NSLog(@"No HDR video track.");
       block(NO);
       return;
     }
@@ -240,21 +240,27 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
 
     CMFormatDescriptionRef format = (__bridge CMFormatDescriptionRef)firstVideoTrack.formatDescriptions[0];
 
-    CMFormatDescriptionRef modifiedFormat = nil;
-    CFDictionaryRef outputProps = nil;
+    CMFormatDescriptionRef modifiedFormat = NULL;
+    CFDictionaryRef outputProps = NULL;
 
     /*
     // Make a new format based on the old format, that changes some extensions.
+    // This doesn't work.
     FourCharCode codec = CMFormatDescriptionGetMediaSubType(format);
     CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions(format);
     CFDictionaryRef extensions = CMFormatDescriptionGetExtensions(format);
 
     CFMutableDictionaryRef modifiedExtensions = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, extensions);
 
+    // Force the ITU color primaries
+    CFDictionarySetValue(modifiedExtensions, kCVImageBufferColorPrimariesKey, kCVImageBufferColorPrimaries_ITU_R_2020);
+
     // Force the HLG transfer function.
-    CFDictionaryReplaceValue(modifiedExtensions, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_ITU_R_2100_HLG);
+    CFDictionarySetValue(modifiedExtensions, kCVImageBufferTransferFunctionKey, kCVImageBufferTransferFunction_ITU_R_2100_HLG);
 
     CMVideoFormatDescriptionCreate(kCFAllocatorDefault, codec, dimensions.width, dimensions.height, modifiedExtensions, &modifiedFormat);
+
+    NSLog(@"Old format was %@ and new format is %@.", format, modifiedFormat);
 
     if (modifiedExtensions) {
       CFRelease(modifiedExtensions);
@@ -269,7 +275,7 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     CFNumberRef pixelFormatTypeNumber = NULL;
     CFDictionaryRef ioSurfaceProps = NULL;
 
-    // We can explictly set the output pixel format here.
+    // Ensure the video is decoded with 10-bit color.
     SInt32 pixelFormatTypeValue = kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange;
     pixelFormatTypeNumber = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &pixelFormatTypeValue);
     outputKeys[keyValueCount] = kCVPixelBufferPixelFormatTypeKey;
@@ -277,7 +283,8 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     keyValueCount++;
 
     /*
-    // We can explictly set the color space here. This doesn't work.
+    // Explictly set the color space.
+    // This doesn't work.
     const void* ioSurfaceKeys[] = {CFSTR("IOSurfaceColorSpace")};
     const void* ioSurfaceValues[] = {kCGColorSpaceITUR_2100_HLG};
     ioSurfaceProps = CFDictionaryCreate(kCFAllocatorDefault, ioSurfaceKeys, ioSurfaceValues, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
@@ -331,9 +338,15 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     // Force a color conversion to HLG.
     CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2100_HLG);
     CFDataRef iccProfile = CGColorSpaceCopyICCData(colorSpace);
+    /*
     const void* pixelTransferKeys[] = {kVTPixelTransferPropertyKey_DestinationICCProfile};
     const void* pixelTransferValues[] = {iccProfile};
     CFDictionaryRef pixelTransferProps = CFDictionaryCreate(kCFAllocatorDefault, pixelTransferKeys, pixelTransferValues, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+    */
+    const void* pixelTransferKeys[] = {kVTPixelTransferPropertyKey_DestinationColorPrimaries, kVTPixelTransferPropertyKey_DestinationTransferFunction};
+    const void* pixelTransferValues[] = {kCMFormatDescriptionColorPrimaries_ITU_R_2020, kCMFormatDescriptionTransferFunction_ITU_R_2100_HLG};
+    CFDictionaryRef pixelTransferProps = CFDictionaryCreate(kCFAllocatorDefault, pixelTransferKeys, pixelTransferValues, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
+
     error = VTSessionSetProperty(decompressor, kVTDecompressionPropertyKey_PixelTransferProperties, pixelTransferProps);
     assert(error == noErr);
     CFRelease(colorSpace);
