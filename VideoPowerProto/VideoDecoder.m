@@ -192,9 +192,9 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     }
 
     // Track property is loaded, so we can get the video tracks without blocking.
-    firstVideoTrack = [[[asset tracksWithMediaCharacteristic:AVMediaCharacteristicContainsHDRVideo] firstObject] retain];
+    firstVideoTrack = [[[asset tracksWithMediaType:AVMediaTypeVideo] firstObject] retain];
     if (!firstVideoTrack) {
-      NSLog(@"No HDR video track.");
+      NSLog(@"No video track.");
       block(NO);
       return;
     }
@@ -335,14 +335,13 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     CFRelease(sessionProps);
     */
 
+    /*
     // Force a color conversion to HLG.
     CGColorSpaceRef colorSpace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2100_HLG);
     CFDataRef iccProfile = CGColorSpaceCopyICCData(colorSpace);
-    /*
     const void* pixelTransferKeys[] = {kVTPixelTransferPropertyKey_DestinationICCProfile};
     const void* pixelTransferValues[] = {iccProfile};
     CFDictionaryRef pixelTransferProps = CFDictionaryCreate(kCFAllocatorDefault, pixelTransferKeys, pixelTransferValues, 1, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
-    */
     const void* pixelTransferKeys[] = {kVTPixelTransferPropertyKey_DestinationColorPrimaries, kVTPixelTransferPropertyKey_DestinationTransferFunction};
     const void* pixelTransferValues[] = {kCMFormatDescriptionColorPrimaries_ITU_R_2020, kCMFormatDescriptionTransferFunction_ITU_R_2100_HLG};
     CFDictionaryRef pixelTransferProps = CFDictionaryCreate(kCFAllocatorDefault, pixelTransferKeys, pixelTransferValues, 2, &kCFTypeDictionaryKeyCallBacks, &kCFTypeDictionaryValueCallBacks);
@@ -352,6 +351,7 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     CFRelease(colorSpace);
     CFRelease(iccProfile);
     CFRelease(pixelTransferProps);
+    */
 
     /*
     error = VTSessionSetProperty(
@@ -684,8 +684,10 @@ void frameTimerCallback(void* context) {
       return @"kVTVideoDecoderUnsupportedDataFormatErr";
     case kVTVideoEncoderAuthorizationErr:
       return @"kVTVideoEncoderAuthorizationErr";
+    /*
     case kVTVideoDecoderNeedsRosettaErr:
       return @"kVTVideoDecoderNeedsRosettaErr";
+    */
     case kVTVideoDecoderRemovedErr:
       return @"kVTVideoDecoderRemovedErr";
   }

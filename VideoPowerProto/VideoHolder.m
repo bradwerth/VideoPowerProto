@@ -116,7 +116,7 @@ const int32_t kStoredBufferMax = 10;
     //NSLog(@"recreateContentLayer AVSampleBufferDisplayLayer.");
     avLayer = [[AVSampleBufferDisplayLayer layer] retain];
     CMTimebaseRef timebase;
-    CMTimebaseCreateWithSourceClock(kCFAllocatorDefault, CMClockGetHostTimeClock(), &timebase);
+    CMTimebaseCreateWithMasterClock(kCFAllocatorDefault, CMClockGetHostTimeClock(), &timebase);
     CMTimebaseSetRate(timebase, 1.0f);
     avLayer.controlTimebase = timebase;
     CFRelease(timebase);
@@ -247,9 +247,11 @@ const int32_t kStoredBufferMax = 10;
       assert(avLayer);
     }
 
+    /*
     if ([avLayer requiresFlushToResumeDecoding]) {
       [avLayer flush];
     }
+    */
 
     if (!hasOutputBufferFromModel) {
       NSLog(@"Format is %@.", format);

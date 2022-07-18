@@ -319,6 +319,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bradleyjwerth.VideoPowerProto;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -338,6 +339,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 10.15;
 				PRODUCT_BUNDLE_IDENTIFIER = com.bradleyjwerth.VideoPowerProto;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
