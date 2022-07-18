@@ -28,6 +28,7 @@ typedef NS_ENUM(NSInteger, Buffering) {
 @property (copy) NSString* videoFile;
 @property LayerClass layerClass;
 @property Buffering buffering;
+@property BOOL flashingOverlay;
 
 - (nonnull id)copyWithZone:(nullable NSZone*)zone;
 

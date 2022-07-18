@@ -20,6 +20,9 @@ NS_ASSUME_NONNULL_BEGIN
 - (CALayer*)detachContentLayer;
 - (void)reattachContentLayer;
 
+- (CALayer*)detachOverlayLayer;
+- (void)reattachOverlayLayer;
+
 - (BOOL)wantsMoreFrames;
 - (BOOL)handleBuffer:(CMSampleBufferRef)buffer;
 - (BOOL)handleFrame:(IOSurfaceRef)surface;

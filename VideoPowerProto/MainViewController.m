@@ -27,6 +27,7 @@
   NSRect oldContentViewFrame;
   CALayer* backgroundLayer;
   CALayer* videoLayer;
+  CALayer* overlayLayer;
   NSArray* oldSubviews;
   VideoDecoder* videoDecoder;
 }
@@ -36,6 +37,7 @@
 
   backgroundLayer = nil;
   videoLayer = nil;
+  overlayLayer = nil;
   oldSubviews = nil;
   videoDecoder = [[VideoDecoder alloc] initWithController:self];
 
@@ -49,7 +51,7 @@
   [self.videoModel addObserver:self forKeyPath:@"videoFile" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"layerClass" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"buffering" options:0 context:nil];
-  [self.videoModel addObserver:self forKeyPath:@"pixelBuffer" options:0 context:nil];
+  [self.videoModel addObserver:self forKeyPath:@"flashingOverlay" options:0 context:nil];
 
   // Setup our initial video.
   [self clearVideo];
@@ -62,13 +64,14 @@
   [_videoHolder release];
 
   [videoLayer release];
+  [overlayLayer release];
   [backgroundLayer release];
   [oldSubviews release];
   [videoDecoder release];
   [self.videoModel removeObserver:self forKeyPath:@"videoFile"];
   [self.videoModel removeObserver:self forKeyPath:@"layerClass"];
   [self.videoModel removeObserver:self forKeyPath:@"buffering"];
-  [self.videoModel removeObserver:self forKeyPath:@"pixelBuffer"];
+  [self.videoModel removeObserver:self forKeyPath:@"flashingOverlay"];
   [super dealloc];
 }
 
@@ -86,6 +89,10 @@
 
 - (IBAction)clickFullscreenButton:(NSButton*)sender {
   [self.view.window toggleFullScreen:sender];
+}
+
+- (IBAction)clickFlashingOverlayButton:(NSButton*)sender {
+  self.videoModel.flashingOverlay = (sender.state == NSControlStateValueOn);
 }
 
 - (void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context {
@@ -155,10 +162,10 @@
   // Lazily create the background layer.
   if (!backgroundLayer) {
     backgroundLayer = [CALayer layer];
+    backgroundLayer.backgroundColor = [[NSColor blackColor] CGColor];
     backgroundLayer.position = NSZeroPoint;
     backgroundLayer.anchorPoint = NSZeroPoint;
     backgroundLayer.bounds = window.contentView.bounds;
-    backgroundLayer.backgroundColor = [[NSColor blackColor] CGColor];
     [window.contentView.layer addSublayer:backgroundLayer];
   }
 
@@ -168,6 +175,12 @@
   [window.contentView.layer addSublayer:videoLayer];
   videoLayer.position = NSZeroPoint;
   videoLayer.anchorPoint = NSZeroPoint;
+
+  overlayLayer = [[self.videoHolder detachOverlayLayer] retain];
+  [window.contentView.layer addSublayer:overlayLayer];
+  overlayLayer.position = NSZeroPoint;
+  overlayLayer.anchorPoint = NSZeroPoint;
+
   // The correct size will be set in windowDidResize, which is called after windowWillEnterFullScreen.
 
   [NSCursor hide];
@@ -193,6 +206,11 @@
   [self.videoHolder reattachContentLayer];
   [videoLayer release];
   videoLayer = nil;
+
+  [overlayLayer removeFromSuperlayer];
+  [self.videoHolder reattachOverlayLayer];
+  [overlayLayer release];
+  overlayLayer = nil;
 
   window.contentView.frame = oldContentViewFrame;
 

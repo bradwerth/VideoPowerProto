@@ -19,11 +19,15 @@
   // avLayer is an unretained alias of contentLayer that indicates we're using
   // this type of layer.
   AVSampleBufferDisplayLayer* avLayer;
+  // overlayLayer appears on top of contentLayer and has some obscuring content.
+  // It is revealed or hidden to see its effect on detached mode.
+  CALayer* overlayLayer;
+  // overlayTimer controls the flashing over the overlayLayer.
+  NSTimer* overlayTimer;
   // frameSurface is the image content displayed by the contentLayer, if we are
   // being fed frames directly.
   IOSurfaceRef frameSurface;
 
-  bool hasOutputBufferFromModel;
   VideoModel* lastModel;
   float aspectRatio;
   CGFloat trackWidth;
@@ -38,6 +42,7 @@ const int32_t kStoredBufferMax = 10;
   // Treat this as our initialization method, and set properties we'll need to
   // act as a layer-backed view.
   contentLayer = nil;
+  overlayLayer = nil;
   avLayer = nil;
   frameSurface = nil;
   lastModel = nil;
@@ -68,6 +73,19 @@ const int32_t kStoredBufferMax = 10;
   [[NSNotificationCenter defaultCenter] addObserverForName:NSViewFrameDidChangeNotification object:self queue:[NSOperationQueue mainQueue] usingBlock:^(NSNotification* note) {
     [holder centerContentLayer];
   }];
+
+  // Create the overlayTimer.
+  void (^overlayBlock)(NSTimer *) = ^(NSTimer* timer) {
+      if (lastModel.flashingOverlay && overlayLayer)  {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        overlayLayer.hidden = !overlayLayer.hidden;
+        [CATransaction commit];
+      }
+    };
+  overlayTimer = [[NSTimer scheduledTimerWithTimeInterval:3.0
+                           repeats:YES
+                           block:overlayBlock] retain];
 }
 
 - (void)dealloc {
@@ -75,6 +93,13 @@ const int32_t kStoredBufferMax = 10;
     CFRelease(frameSurface);
   }
   frameSurface = nil;
+
+  if (overlayTimer) {
+    [overlayTimer invalidate];
+  }
+  [overlayTimer release];
+  overlayTimer = nil;
+
   [super dealloc];
 }
 
@@ -83,8 +108,6 @@ const int32_t kStoredBufferMax = 10;
   VideoModel *oldModel = lastModel;
   lastModel = [model copy];
   [oldModel release];
-
-  hasOutputBufferFromModel = false;
 
   [self recreateContentLayer];
 }
@@ -101,6 +124,8 @@ const int32_t kStoredBufferMax = 10;
   [contentLayer release];
   contentLayer = nil;
   avLayer = nil;
+  [overlayLayer release];
+  overlayLayer = nil;
   self.layer.sublayers = nil;
 
   if (!lastModel) {
@@ -128,10 +153,33 @@ const int32_t kStoredBufferMax = 10;
   contentLayer.contentsGravity = kCAGravityTopLeft;
   contentLayer.contentsScale = 1;
   contentLayer.bounds = NSMakeRect(0.0f, 0.0f, 16.0f, 9.0f);
-  contentLayer.edgeAntialiasingMask = 0;
   contentLayer.opaque = YES;
 
   [self.layer addSublayer:contentLayer];
+
+  overlayLayer =  [[CALayer layer] retain];
+  overlayLayer.position = NSZeroPoint;
+  overlayLayer.anchorPoint = NSZeroPoint;
+  overlayLayer.contentsGravity = kCAGravityTopLeft;
+  overlayLayer.contentsScale = 1;
+  overlayLayer.bounds = NSMakeRect(0.0f, 0.0f, 16.0f, 9.0f);
+  overlayLayer.opaque = NO;
+
+  if (lastModel.flashingOverlay) {
+    // Add something to the overlayLayer.
+    CATextLayer* textLayer = [CATextLayer layer];
+    textLayer.string = @"overlay";
+    textLayer.foregroundColor = CGColorGetConstantColor(kCGColorWhite);
+    textLayer.position = NSZeroPoint;
+    textLayer.anchorPoint = NSZeroPoint;
+
+    [overlayLayer addSublayer:textLayer];
+
+    CGSize size = [textLayer preferredFrameSize];
+    textLayer.bounds = NSMakeRect(0.0f, 0.0f, size.width, size.height);
+  }
+
+  [self.layer addSublayer:overlayLayer];
 
   VideoHolder* holder = self;
   // Figure out the size of the video in the model, then center the content
@@ -174,6 +222,16 @@ const int32_t kStoredBufferMax = 10;
   [self centerContentLayer];
 }
 
+- (CALayer*)detachOverlayLayer {
+  self.layer.sublayers = nil;
+  return overlayLayer;
+}
+
+- (void)reattachOverlayLayer {
+  [self.layer addSublayer:overlayLayer];
+  [self centerContentLayer];
+}
+
 - (void)enqueueMoreFrames {
   [self.controller requestFrames];
 }
@@ -202,6 +260,10 @@ const int32_t kStoredBufferMax = 10;
   // on the width of the frame divided by the width of the layer.
   CGFloat scale = trackWidth / requestedWidth;
   contentLayer.contentsScale = scale;
+
+  // Do the same thing with the overlayLayer.
+  overlayLayer.position = contentLayer.position;
+  overlayLayer.bounds = contentLayer.bounds;
 
   [CATransaction commit];
 }
@@ -252,13 +314,6 @@ const int32_t kStoredBufferMax = 10;
       [avLayer flush];
     }
     */
-
-    if (!hasOutputBufferFromModel) {
-      NSLog(@"Format is %@.", format);
-
-      NSLog(@"Direct buffer is %@.", buffer);
-      hasOutputBufferFromModel = true;
-    }
 
     [avLayer enqueueSampleBuffer:buffer];
 
@@ -386,10 +441,6 @@ const int32_t kStoredBufferMax = 10;
   // Remove the ICC profile.
   CFDictionaryRemoveValue(modifiedExtensions, kCVImageBufferICCProfileKey);
 
-  if (!hasOutputBufferFromModel) {
-    NSLog(@"Modified extensions are %@.", modifiedExtensions);
-  }
-
   CMVideoFormatDescriptionCreate(kCFAllocatorDefault, codec, dimensions.width, dimensions.height, modifiedExtensions, &modifiedFormat);
 
   if (modifiedExtensions) {
@@ -403,19 +454,6 @@ const int32_t kStoredBufferMax = 10;
   CMSampleBufferRef sampleBuffer = nil;
   error = CMSampleBufferCreateReadyWithImageBuffer(
       kCFAllocatorDefault, pixelBuffer, format, &kCMTimingInfoInvalid, &sampleBuffer);
-
-  if (!hasOutputBufferFromModel) {
-    CFDictionaryRef surfaceProps = IOSurfaceCopyAllValues(surface);
-    NSLog(@"IOSurface props are %@.", surfaceProps);
-    CFRelease(surfaceProps);
-
-    NSLog(@"Pixel buffer is %@.", pixelBuffer);
-
-    NSLog(@"Format is %@.", format);
-
-    NSLog(@"Recreated buffer is %@.", sampleBuffer);
-    hasOutputBufferFromModel = true;
-  }
 
   if (modifiedFormat) {
     CFRelease(modifiedFormat);

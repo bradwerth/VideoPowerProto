@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="19529" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="16097.3" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
-        <deployment identifier="macosx"/>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="19529"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="16097.3"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
@@ -422,7 +421,7 @@
         <window title="VideoPowerProto" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" id="QvC-M9-y7g">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <rect key="contentRect" x="605" y="471" width="793" height="270"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="1920" height="1175"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="1680" height="1027"/>
             <value key="minSize" type="size" width="771" height="269"/>
             <view key="contentView" id="EiT-Mj-1SZ">
                 <rect key="frame" x="0.0" y="0.0" width="793" height="270"/>
@@ -442,10 +441,10 @@
                                 </textFieldCell>
                             </textField>
                             <popUpButton verticalHuggingPriority="750" verifyAmbiguity="off" translatesAutoresizingMaskIntoConstraints="NO" id="pWS-HU-Pgb" userLabel="LayerClassPopUp">
-                                <rect key="frame" x="100" y="158" width="257" height="25"/>
+                                <rect key="frame" x="101" y="158" width="255" height="25"/>
                                 <popUpButtonCell key="cell" type="push" title="CALayer" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="VXN-7j-UT1" id="gCd-tc-0Yx">
                                     <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
-                                    <font key="font" metaFont="menu"/>
+                                    <font key="font" metaFont="system"/>
                                     <menu key="menu" id="fSW-o1-F5z">
                                         <items>
                                             <menuItem title="CALayer" state="on" id="VXN-7j-UT1"/>
@@ -467,10 +466,10 @@
                                 </textFieldCell>
                             </textField>
                             <popUpButton verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="F4C-xs-ROU" userLabel="BufferingPopUp">
-                                <rect key="frame" x="100" y="128" width="257" height="25"/>
+                                <rect key="frame" x="101" y="129" width="255" height="25"/>
                                 <popUpButtonCell key="cell" type="push" title="Direct" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="Zas-xZ-4nh" id="86X-7l-rkN">
                                     <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
-                                    <font key="font" metaFont="menu"/>
+                                    <font key="font" metaFont="system"/>
                                     <menu key="menu" id="oz0-hz-4HF">
                                         <items>
                                             <menuItem title="Direct" state="on" id="Zas-xZ-4nh"/>
@@ -483,7 +482,7 @@
                                 </connections>
                             </popUpButton>
                             <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="xzE-3i-fJt">
-                                <rect key="frame" x="138" y="7" width="97" height="32"/>
+                                <rect key="frame" x="135" y="6" width="103" height="32"/>
                                 <buttonCell key="cell" type="push" title="Fullscreen" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="GeA-v7-qOa">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" metaFont="system"/>
@@ -502,18 +501,29 @@
                                 </textFieldCell>
                             </textField>
                             <popUpButton verticalHuggingPriority="750" verifyAmbiguity="off" translatesAutoresizingMaskIntoConstraints="NO" id="YZT-C4-Puf" userLabel="VideoFilePopUp">
-                                <rect key="frame" x="100" y="186" width="257" height="25"/>
+                                <rect key="frame" x="101" y="186" width="255" height="25"/>
                                 <popUpButtonCell key="cell" type="push" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" id="PdA-MV-XOq">
                                     <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
-                                    <font key="font" metaFont="menu"/>
+                                    <font key="font" metaFont="system"/>
                                     <menu key="menu" id="CTV-dE-cmU"/>
                                 </popUpButtonCell>
                                 <connections>
                                     <action selector="selectVideoFile:" target="Srn-Ee-aWU" id="Kfa-Cy-E8I"/>
                                 </connections>
                             </popUpButton>
+                            <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="94U-il-eje">
+                                <rect key="frame" x="101" y="106" width="123" height="18"/>
+                                <buttonCell key="cell" type="check" title="Flashing Overlay" bezelStyle="regularSquare" imagePosition="left" inset="2" id="cCc-Ju-1mz">
+                                    <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
+                                    <font key="font" metaFont="system"/>
+                                </buttonCell>
+                                <connections>
+                                    <action selector="clickFlashingOverlayButton:" target="Srn-Ee-aWU" id="ul8-CF-Sbu"/>
+                                </connections>
+                            </button>
                         </subviews>
                         <constraints>
+                            <constraint firstItem="94U-il-eje" firstAttribute="top" secondItem="F4C-xs-ROU" secondAttribute="bottom" constant="10" id="1wK-dx-zig"/>
                             <constraint firstItem="pWS-HU-Pgb" firstAttribute="trailing" secondItem="F4C-xs-ROU" secondAttribute="trailing" id="4tw-eo-4cE"/>
                             <constraint firstItem="YZT-C4-Puf" firstAttribute="top" secondItem="yYF-cD-HUO" secondAttribute="top" id="9DL-I3-Mtk"/>
                             <constraint firstItem="F4C-xs-ROU" firstAttribute="baseline" secondItem="KnZ-ko-cfO" secondAttribute="baseline" id="JPu-da-K7q"/>
@@ -523,6 +533,7 @@
                             <constraint firstItem="xzE-3i-fJt" firstAttribute="top" secondItem="F4C-xs-ROU" secondAttribute="bottom" constant="98" id="SSb-F6-1op"/>
                             <constraint firstItem="pWS-HU-Pgb" firstAttribute="leading" secondItem="F4C-xs-ROU" secondAttribute="leading" id="bPZ-um-446"/>
                             <constraint firstItem="YZT-C4-Puf" firstAttribute="leading" secondItem="yYF-cD-HUO" secondAttribute="trailing" constant="8" symbolic="YES" id="ezJ-78-gYF"/>
+                            <constraint firstItem="94U-il-eje" firstAttribute="leading" secondItem="F4C-xs-ROU" secondAttribute="leading" id="viu-4e-gpw"/>
                             <constraint firstItem="xzE-3i-fJt" firstAttribute="centerX" secondItem="M7a-b3-TyO" secondAttribute="centerX" id="woV-mL-RT2"/>
                             <constraint firstItem="YZT-C4-Puf" firstAttribute="trailing" secondItem="pWS-HU-Pgb" secondAttribute="trailing" id="yvT-g3-hRl"/>
                         </constraints>

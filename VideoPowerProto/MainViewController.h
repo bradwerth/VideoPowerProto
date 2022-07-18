@@ -14,6 +14,7 @@ NS_ASSUME_NONNULL_BEGIN
 - (IBAction)selectLayerClass:(id)sender;
 - (IBAction)selectBuffering:(id)sender;
 - (IBAction)clickFullscreenButton:(id)sender;
+- (IBAction)clickFlashingOverlayButton:(id)sender;
 
 - (BOOL)wantsMoreFrames;
 - (BOOL)handleBuffer:(CMSampleBufferRef)buffer;
