@@ -15,12 +15,12 @@
 @interface MainViewController ()
 
 @property (strong) IBOutlet VideoModel* videoModel;
+@property (strong) IBOutlet VideoHolder* videoHolder;
 
 @property (strong) IBOutlet NSPopUpButton* videoFilePopUp;
 @property (strong) IBOutlet NSPopUpButton* layerClassPopUp;
 @property (strong) IBOutlet NSPopUpButton* bufferingPopUp;
 
-@property (strong) IBOutlet VideoHolder* videoHolder;
 @end
 
 @implementation MainViewController {
@@ -54,7 +54,6 @@
 
   // Populate the video file menu, which will setup our initial video.
   [self populateVideoFileMenu];
-
 }
 
 - (void)dealloc {
@@ -63,15 +62,18 @@
   [_bufferingPopUp release];
   [_videoHolder release];
 
+  [backgroundLayer release];
   [videoLayer release];
   [overlayLayer release];
-  [backgroundLayer release];
   [oldSubviews release];
   [videoDecoder release];
+
   [self.videoModel removeObserver:self forKeyPath:@"videoFile"];
   [self.videoModel removeObserver:self forKeyPath:@"layerClass"];
   [self.videoModel removeObserver:self forKeyPath:@"buffering"];
   [self.videoModel removeObserver:self forKeyPath:@"flashingOverlay"];
+  [_videoModel release];
+
   [super dealloc];
 }
 
@@ -173,15 +175,15 @@
 
   backgroundLayer.hidden = NO;
 
-  videoLayer = [[self.videoHolder detachContentLayer] retain];
-  [window.contentView.layer addSublayer:videoLayer];
-  videoLayer.position = NSZeroPoint;
-  videoLayer.anchorPoint = NSZeroPoint;
+  videoLayer = [[self.videoHolder detachVideoLayer] retain];
+  if (videoLayer) {
+    [window.contentView.layer addSublayer:videoLayer];
+  }
 
   overlayLayer = [[self.videoHolder detachOverlayLayer] retain];
-  [window.contentView.layer addSublayer:overlayLayer];
-  overlayLayer.position = NSZeroPoint;
-  overlayLayer.anchorPoint = NSZeroPoint;
+  if (overlayLayer) {
+    [window.contentView.layer addSublayer:overlayLayer];
+  }
 
   // The correct size will be set in windowDidResize, which is called after windowWillEnterFullScreen.
 
@@ -193,8 +195,12 @@
   if (window.styleMask & NSWindowStyleMaskFullScreen) {
     // Make sure the black backdrop layer and the video layer are resized
     // to fit the fullscreen size.
-    for (CALayer* sublayer in window.contentView.layer.sublayers) {
-      sublayer.bounds = window.contentView.bounds;
+    if (backgroundLayer) {
+      backgroundLayer.bounds = window.contentView.bounds;
+    }
+
+    if (videoLayer) {
+      videoLayer.bounds = window.contentView.bounds;
     }
   }
 }
@@ -204,12 +210,16 @@
 
   backgroundLayer.hidden = YES;
 
-  [videoLayer removeFromSuperlayer];
-  [self.videoHolder reattachContentLayer];
+  if (videoLayer) {
+    [videoLayer removeFromSuperlayer];
+  }
+  [self.videoHolder reattachVideoLayer];
   [videoLayer release];
   videoLayer = nil;
 
-  [overlayLayer removeFromSuperlayer];
+  if (overlayLayer) {
+    [overlayLayer removeFromSuperlayer];
+  }
   [self.videoHolder reattachOverlayLayer];
   [overlayLayer release];
   overlayLayer = nil;

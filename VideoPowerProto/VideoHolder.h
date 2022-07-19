@@ -17,8 +17,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (void)resetWithModel:(VideoModel* _Nullable)model;
 
-- (CALayer*)detachContentLayer;
-- (void)reattachContentLayer;
+- (CALayer*)detachVideoLayer;
+- (void)reattachVideoLayer;
 
 - (CALayer*)detachOverlayLayer;
 - (void)reattachOverlayLayer;

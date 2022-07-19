@@ -488,7 +488,7 @@
                                     <font key="font" metaFont="system"/>
                                 </buttonCell>
                                 <connections>
-                                    <action selector="clickFullscreenButton:" target="Srn-Ee-aWU" id="G1K-11-h8C"/>
+                                    <action selector="clickFullscreenButton:" target="Srn-Ee-aWU" id="E4G-cG-bfE"/>
                                 </connections>
                             </button>
                             <textField horizontalHuggingPriority="251" verticalHuggingPriority="750" id="yYF-cD-HUO">
@@ -545,7 +545,7 @@
                             <customView verifyAmbiguity="off" translatesAutoresizingMaskIntoConstraints="NO" id="qM8-eV-Fi9" customClass="VideoHolder">
                                 <rect key="frame" x="20" y="20" width="332" height="190"/>
                                 <connections>
-                                    <outlet property="controller" destination="Srn-Ee-aWU" id="IGG-f8-Sch"/>
+                                    <outlet property="controller" destination="Srn-Ee-aWU" id="gab-Nr-4GG"/>
                                 </connections>
                             </customView>
                         </subviews>
