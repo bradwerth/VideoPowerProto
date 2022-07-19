@@ -44,17 +44,17 @@
   NSWindow* window = self.view.window;
   window.contentView.wantsLayer = YES;
 
-  // Populate the video file menu.
-  [self populateVideoFileMenu];
-
   // Listen to all the properties that might change in our model.
   [self.videoModel addObserver:self forKeyPath:@"videoFile" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"layerClass" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"buffering" options:0 context:nil];
   [self.videoModel addObserver:self forKeyPath:@"flashingOverlay" options:0 context:nil];
 
-  // Setup our initial video.
   [self clearVideo];
+
+  // Populate the video file menu, which will setup our initial video.
+  [self populateVideoFileMenu];
+
 }
 
 - (void)dealloc {
@@ -96,10 +96,6 @@
 }
 
 - (void)observeValueForKeyPath:(NSString*)keyPath ofObject:(id)object change:(NSDictionary*)change context:(void*)context {
-  // All changes to the model require resetting the videoDecoder first, and
-  // when that is complete, resetting the videoHolder. We accomplish that by
-  // passing a completion block to the decoder.
-  [self clearVideo];
   [self resetVideo];
 }
 
@@ -111,6 +107,9 @@
   for (NSURL* url in urls) {
     [self.videoFilePopUp addItemWithTitle:url.lastPathComponent];
   }
+
+  [self.videoFilePopUp selectItemAtIndex:0];
+  [self selectVideoFile:self.videoFilePopUp];
 }
 
 - (void)clearVideo {
@@ -119,6 +118,9 @@
 }
 
 - (void)resetVideo {
+  // All changes to the model require resetting the videoDecoder first, and
+  // when that is complete, resetting the videoHolder. We accomplish that by
+  // passing a completion block to the decoder.
   MainViewController* controller = self;
   [videoDecoder resetWithModel:self.videoModel completionHandler:^(BOOL success) {
     dispatch_async(dispatch_get_main_queue(), ^{
