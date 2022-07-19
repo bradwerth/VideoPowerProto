@@ -12,8 +12,8 @@ NS_ASSUME_NONNULL_BEGIN
 
 // Keep these values synced with the Tags used in the xib.
 typedef NS_ENUM(NSInteger, LayerClass) {
-  LayerClassCALayer,
   LayerClassAVSampleBufferDisplayLayer,
+  LayerClassCALayer,
 };
 
 // Keep these values synced with the Tags used in the xib.
