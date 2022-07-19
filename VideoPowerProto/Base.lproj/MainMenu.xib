@@ -442,13 +442,13 @@
                             </textField>
                             <popUpButton verticalHuggingPriority="750" verifyAmbiguity="off" translatesAutoresizingMaskIntoConstraints="NO" id="pWS-HU-Pgb" userLabel="LayerClassPopUp">
                                 <rect key="frame" x="101" y="158" width="255" height="25"/>
-                                <popUpButtonCell key="cell" type="push" title="AVSampleBufferDisplayLayer" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" tag="1" imageScaling="proportionallyDown" inset="2" selectedItem="V6k-A4-hnr" id="gCd-tc-0Yx">
+                                <popUpButtonCell key="cell" type="push" title="AVSampleBufferDisplayLayer" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="V6k-A4-hnr" id="gCd-tc-0Yx">
                                     <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" metaFont="system"/>
                                     <menu key="menu" id="fSW-o1-F5z">
                                         <items>
-                                            <menuItem title="AVSampleBufferDisplayLayer" state="on" tag="1" id="V6k-A4-hnr"/>
-                                            <menuItem title="CALayer" id="VXN-7j-UT1"/>
+                                            <menuItem title="AVSampleBufferDisplayLayer" state="on" id="V6k-A4-hnr"/>
+                                            <menuItem title="CALayer" tag="1" id="VXN-7j-UT1"/>
                                         </items>
                                     </menu>
                                 </popUpButtonCell>

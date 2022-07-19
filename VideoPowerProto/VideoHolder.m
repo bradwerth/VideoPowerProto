@@ -272,10 +272,9 @@ const int32_t kStoredBufferMax = 10;
 }
 
 - (BOOL)handleBuffer:(CMSampleBufferRef)buffer {
-  if (!lastModel) {
+  if (!lastModel || !lastModel.canHandleBuffers) {
     return NO;
   }
-  assert(lastModel.canHandleBuffers);
 
   //NSLog(@"handleBuffer buffer is %@.", buffer);
 
