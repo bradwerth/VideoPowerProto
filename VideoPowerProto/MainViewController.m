@@ -169,7 +169,6 @@
     backgroundLayer.backgroundColor = [[NSColor blackColor] CGColor];
     backgroundLayer.position = NSZeroPoint;
     backgroundLayer.anchorPoint = NSZeroPoint;
-    backgroundLayer.bounds = window.contentView.bounds;
     [window.contentView.layer addSublayer:backgroundLayer];
   }
 

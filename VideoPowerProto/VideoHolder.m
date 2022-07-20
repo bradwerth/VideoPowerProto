@@ -276,8 +276,6 @@ const int32_t kStoredBufferMax = 10;
     return NO;
   }
 
-  //NSLog(@"handleBuffer buffer is %@.", buffer);
-
   presentationTimeOfLastBuffer = CMSampleBufferGetOutputPresentationTimeStamp(buffer);
 
   // Track whether we want more buffers. Generally, we do, but certain buffer
@@ -309,6 +307,8 @@ const int32_t kStoredBufferMax = 10;
       [avLayer flush];
     }
     */
+
+    //NSLog(@"handleBuffer buffer is %@.", buffer);
 
     [avLayer enqueueSampleBuffer:buffer];
 
@@ -396,6 +396,13 @@ const int32_t kStoredBufferMax = 10;
 - (BOOL)handleFrameAsBuffer:(IOSurfaceRef)surface {
   //NSLog(@"handleFrameAsBuffer.");
 
+  // Set the colorspace. Use our main display color space.
+  CGColorSpaceRef colorSpace = CGDisplayCopyColorSpace(CGMainDisplayID());
+  CFDataRef colorData = CGColorSpaceCopyICCData(colorSpace);
+  IOSurfaceSetValue(surface, CFSTR("IOSurfaceColorSpace"), colorData);
+  CFRelease(colorData);
+  CFRelease(colorSpace);
+
   // Convert the IOSurface into a CMSampleBuffer, so we can enqueue it in
   // avLayer.
   CVPixelBufferRef pixelBuffer = nil;
@@ -405,6 +412,8 @@ const int32_t kStoredBufferMax = 10;
     NSLog(@"Couldn't extract pixel buffer from frame surface.");
     return NO;
   }
+
+  //NSLog(@"Pixel buffer is %@.", pixelBuffer);
 
   /*
   // Transform the pixel buffer a bit.
@@ -427,6 +436,7 @@ const int32_t kStoredBufferMax = 10;
 
   CFMutableDictionaryRef modifiedExtensions = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, extensions);
 
+  /*
   // Force the ITU color primaries
   CFDictionarySetValue(modifiedExtensions, kCVImageBufferColorPrimariesKey, kCVImageBufferColorPrimaries_ITU_R_2020);
 
@@ -437,6 +447,7 @@ const int32_t kStoredBufferMax = 10;
   CFDictionaryRemoveValue(modifiedExtensions, kCVImageBufferICCProfileKey);
 
   CMVideoFormatDescriptionCreate(kCFAllocatorDefault, codec, dimensions.width, dimensions.height, modifiedExtensions, &modifiedFormat);
+  */
 
   if (modifiedExtensions) {
     CFRelease(modifiedExtensions);
@@ -481,6 +492,8 @@ const int32_t kStoredBufferMax = 10;
   CMTime nowTime = CMTimebaseGetTime(avLayer.controlTimebase);
   CMSampleBufferSetOutputPresentationTimeStamp(sampleBuffer, nowTime);
   */
+
+  //NSLog(@"handleFrameAsBuffer buffer is %@.", sampleBuffer);
 
   [avLayer enqueueSampleBuffer:sampleBuffer];
   return YES;

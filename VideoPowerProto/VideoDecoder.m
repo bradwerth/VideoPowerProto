@@ -260,12 +260,12 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
 
     CMVideoFormatDescriptionCreate(kCFAllocatorDefault, codec, dimensions.width, dimensions.height, modifiedExtensions, &modifiedFormat);
 
-    NSLog(@"Old format was %@ and new format is %@.", format, modifiedFormat);
-
     if (modifiedExtensions) {
       CFRelease(modifiedExtensions);
     }
     */
+
+    //NSLog(@"Old format was %@ and new format is %@.", format, modifiedFormat);
 
     static const long OUTPUT_KEY_VALUE_MAX = 5;
     const void* outputKeys[OUTPUT_KEY_VALUE_MAX];
@@ -276,7 +276,7 @@ static const CFIndex MAX_FRAMES_TO_HOLD = (CFIndex)(SECONDS_OF_FRAMES_TO_BUFFER 
     CFDictionaryRef ioSurfaceProps = NULL;
 
     // Ensure the video is decoded with 10-bit color.
-    SInt32 pixelFormatTypeValue = kCVPixelFormatType_420YpCbCr10BiPlanarVideoRange;
+    SInt32 pixelFormatTypeValue = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
     pixelFormatTypeNumber = CFNumberCreate(kCFAllocatorDefault, kCFNumberSInt32Type, &pixelFormatTypeValue);
     outputKeys[keyValueCount] = kCVPixelBufferPixelFormatTypeKey;
     outputValues[keyValueCount] = pixelFormatTypeNumber;
@@ -509,6 +509,9 @@ void frameTimerCallback(void* context) {
       // Always specify IOSurface key. Using a blank dictionary lets the OS decide
       // the best way to allocate IOSurfaces.
       [dict setValue:[NSDictionary dictionary] forKey:(__bridge NSString*)kCVPixelBufferIOSurfacePropertiesKey];
+
+      // Specify that we can accept wide color.
+      //[dict setValue:@YES forKey:AVVideoAllowWideColorKey];
     }
 
     assetOutput = [[AVAssetReaderTrackOutput alloc] initWithTrack:firstVideoTrack outputSettings:dict];
