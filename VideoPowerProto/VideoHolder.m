@@ -430,8 +430,8 @@ const int32_t kStoredBufferMax = 10;
   CMFormatDescriptionRef modifiedFormat = NULL;
 
   // Make a new format based on the old format, that changes some extensions.
-  FourCharCode codec = CMFormatDescriptionGetMediaSubType(format);
-  CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions(format);
+  //FourCharCode codec = CMFormatDescriptionGetMediaSubType(format);
+  //CMVideoDimensions dimensions = CMVideoFormatDescriptionGetDimensions(format);
   CFDictionaryRef extensions = CMFormatDescriptionGetExtensions(format);
 
   CFMutableDictionaryRef modifiedExtensions = CFDictionaryCreateMutableCopy(kCFAllocatorDefault, 0, extensions);
