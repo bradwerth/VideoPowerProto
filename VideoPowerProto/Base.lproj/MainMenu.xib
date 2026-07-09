@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="16097.3" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
+<document type="com.apple.InterfaceBuilder3.Cocoa.XIB" version="3.0" toolsVersion="24765" targetRuntime="MacOSX.Cocoa" propertyAccessControl="none" useAutolayout="YES" customObjectInstantitationMethod="direct">
     <dependencies>
-        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="16097.3"/>
+        <plugIn identifier="com.apple.InterfaceBuilder.CocoaPlugin" version="24765"/>
         <capability name="documents saved in the Xcode 8 format" minToolsVersion="8.0"/>
     </dependencies>
     <objects>
@@ -421,7 +421,7 @@
         <window title="VideoPowerProto" allowsToolTipsWhenApplicationIsInactive="NO" autorecalculatesKeyViewLoop="NO" releasedWhenClosed="NO" animationBehavior="default" id="QvC-M9-y7g">
             <windowStyleMask key="styleMask" titled="YES" closable="YES" miniaturizable="YES" resizable="YES"/>
             <rect key="contentRect" x="605" y="471" width="793" height="270"/>
-            <rect key="screenRect" x="0.0" y="0.0" width="1680" height="1027"/>
+            <rect key="screenRect" x="0.0" y="0.0" width="1512" height="948"/>
             <value key="minSize" type="size" width="771" height="269"/>
             <view key="contentView" id="EiT-Mj-1SZ">
                 <rect key="frame" x="0.0" y="0.0" width="793" height="270"/>
@@ -440,11 +440,11 @@
                                     <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                 </textFieldCell>
                             </textField>
-                            <popUpButton verticalHuggingPriority="750" verifyAmbiguity="off" translatesAutoresizingMaskIntoConstraints="NO" id="pWS-HU-Pgb" userLabel="LayerClassPopUp">
-                                <rect key="frame" x="101" y="158" width="255" height="25"/>
+                            <popUpButton verifyAmbiguity="off" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="pWS-HU-Pgb" userLabel="LayerClassPopUp">
+                                <rect key="frame" x="103" y="158" width="250" height="24"/>
                                 <popUpButtonCell key="cell" type="push" title="AVSampleBufferDisplayLayer" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="V6k-A4-hnr" id="gCd-tc-0Yx">
                                     <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
-                                    <font key="font" metaFont="system"/>
+                                    <font key="font" metaFont="message"/>
                                     <menu key="menu" id="fSW-o1-F5z">
                                         <items>
                                             <menuItem title="AVSampleBufferDisplayLayer" state="on" id="V6k-A4-hnr"/>
@@ -466,10 +466,10 @@
                                 </textFieldCell>
                             </textField>
                             <popUpButton verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="F4C-xs-ROU" userLabel="BufferingPopUp">
-                                <rect key="frame" x="101" y="129" width="255" height="25"/>
+                                <rect key="frame" x="103" y="131" width="250" height="24"/>
                                 <popUpButtonCell key="cell" type="push" title="Direct" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" state="on" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" selectedItem="Zas-xZ-4nh" id="86X-7l-rkN">
                                     <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
-                                    <font key="font" metaFont="system"/>
+                                    <font key="font" metaFont="message"/>
                                     <menu key="menu" id="oz0-hz-4HF">
                                         <items>
                                             <menuItem title="Direct" state="on" id="Zas-xZ-4nh"/>
@@ -482,7 +482,7 @@
                                 </connections>
                             </popUpButton>
                             <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="xzE-3i-fJt">
-                                <rect key="frame" x="135" y="6" width="103" height="32"/>
+                                <rect key="frame" x="143" y="9" width="87" height="24"/>
                                 <buttonCell key="cell" type="push" title="Fullscreen" bezelStyle="rounded" alignment="center" borderStyle="border" imageScaling="proportionallyDown" inset="2" id="GeA-v7-qOa">
                                     <behavior key="behavior" pushIn="YES" lightByBackground="YES" lightByGray="YES"/>
                                     <font key="font" metaFont="system"/>
@@ -500,11 +500,11 @@
                                     <color key="backgroundColor" name="textBackgroundColor" catalog="System" colorSpace="catalog"/>
                                 </textFieldCell>
                             </textField>
-                            <popUpButton verticalHuggingPriority="750" verifyAmbiguity="off" translatesAutoresizingMaskIntoConstraints="NO" id="YZT-C4-Puf" userLabel="VideoFilePopUp">
-                                <rect key="frame" x="101" y="186" width="255" height="25"/>
+                            <popUpButton verifyAmbiguity="off" verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="YZT-C4-Puf" userLabel="VideoFilePopUp">
+                                <rect key="frame" x="103" y="186" width="250" height="24"/>
                                 <popUpButtonCell key="cell" type="push" bezelStyle="rounded" alignment="left" lineBreakMode="truncatingTail" borderStyle="borderAndBezel" imageScaling="proportionallyDown" inset="2" id="PdA-MV-XOq">
                                     <behavior key="behavior" lightByBackground="YES" lightByGray="YES"/>
-                                    <font key="font" metaFont="system"/>
+                                    <font key="font" metaFont="message"/>
                                     <menu key="menu" id="CTV-dE-cmU"/>
                                 </popUpButtonCell>
                                 <connections>
@@ -512,7 +512,7 @@
                                 </connections>
                             </popUpButton>
                             <button verticalHuggingPriority="750" translatesAutoresizingMaskIntoConstraints="NO" id="94U-il-eje">
-                                <rect key="frame" x="101" y="106" width="123" height="18"/>
+                                <rect key="frame" x="103" y="105" width="122" height="16"/>
                                 <buttonCell key="cell" type="check" title="Flashing Overlay" bezelStyle="regularSquare" imagePosition="left" inset="2" id="cCc-Ju-1mz">
                                     <behavior key="behavior" changeContents="YES" doesNotDimImage="YES" lightByContents="YES"/>
                                     <font key="font" metaFont="system"/>
