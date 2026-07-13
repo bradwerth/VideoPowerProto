@@ -34,6 +34,8 @@
   dispatch_queue_global_t queueToUse;
 
   CMTime presentationTimeOfLastBuffer;
+
+  BOOL logNextBuffer;
 }
 
 const int32_t kStoredBufferMax = 10;
@@ -50,6 +52,7 @@ const int32_t kStoredBufferMax = 10;
   trackWidth = 0.0f;
   queueToUse = dispatch_get_global_queue(QOS_CLASS_BACKGROUND, 0);
   presentationTimeOfLastBuffer = kCMTimeInvalid;
+  logNextBuffer = NO;
 
   // Set some initial properties on our backing layer.
   self.wantsLayer = YES;
@@ -95,6 +98,8 @@ const int32_t kStoredBufferMax = 10;
   VideoModel *oldModel = lastModel;
   lastModel = [model copy];
   [oldModel release];
+
+  logNextBuffer = YES;
 
   [self recreatevideoLayer];
 }
@@ -308,7 +313,12 @@ const int32_t kStoredBufferMax = 10;
     }
     */
 
-    //NSLog(@"handleBuffer buffer is %@.", buffer);
+    if (logNextBuffer) {
+      NSLog(@"handleBuffer buffer is %@.", buffer);
+      CVImageBufferRef image = CMSampleBufferGetImageBuffer(buffer);
+      NSLog(@"handleBuffer image is %@.", image);
+    }
+    logNextBuffer = NO;
 
     [avLayer enqueueSampleBuffer:buffer];
 
